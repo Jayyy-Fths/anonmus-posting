@@ -47,7 +47,14 @@ async function api(method, url, body) {
     headers: body ? { 'Content-Type': 'application/json' } : {},
     body: body ? JSON.stringify(body) : undefined,
   });
-  const data = await res.json();
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    console.error(`[ANON.TEA] Bad response from ${method} ${url}`, { status: res.status, body: text.slice(0, 500) });
+    throw new Error(`Server error (status ${res.status}) — check the browser console`);
+  }
   if (!res.ok) throw new Error(data.error || 'Something went wrong');
   return data;
 }
