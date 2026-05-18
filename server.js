@@ -126,7 +126,12 @@ app.get('/api/categories', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  const mode = process.env.CONVEX_URL ? '☁️  Convex' : '📁  local JSON';
-  console.log(`\n  ☕  ANON.TEA  →  http://localhost:${PORT}  (${mode})\n`);
-});
+// Local dev: start the server directly. Vercel: export app as a handler.
+if (require.main === module) {
+  app.listen(PORT, () => {
+    const mode = process.env.CONVEX_URL ? '☁️  Convex' : '📁  local JSON';
+    console.log(`\n  ☕  ANON.TEA  →  http://localhost:${PORT}  (${mode})\n`);
+  });
+}
+
+module.exports = app;
