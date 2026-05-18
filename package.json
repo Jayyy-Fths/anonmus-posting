@@ -1,0 +1,16 @@
+{
+  "name": "anon-tea",
+  "version": "1.0.0",
+  "description": "Anonymous gossip posting site",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "convex": "convex dev"
+  },
+  "dependencies": {
+    "convex": "^1.39.1",
+    "dotenv": "^17.4.2",
+    "express": "^4.18.2"
+  }
+}

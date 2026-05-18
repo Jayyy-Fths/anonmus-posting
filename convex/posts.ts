@@ -1,0 +1,157 @@
+import { query, mutation } from "./_generated/server";
+import { v } from "convex/values";
+import { Doc } from "./_generated/dataModel";
+
+const CATEGORIES = [
+  { id: "general",       label: "📣 General" },
+  { id: "school",        label: "🏫 School" },
+  { id: "drama",         label: "💔 Drama" },
+  { id: "relationships", label: "💑 Relationships" },
+  { id: "work",          label: "💼 Work" },
+  { id: "social",        label: "🎉 Social" },
+  { id: "online",        label: "📱 Online" },
+];
+const CATEGORY_IDS = new Set(CATEGORIES.map(c => c.id));
+const VALID_EMOJIS = new Set(["🔥", "😱", "☕", "💀", "👀"]);
+
+// Normalize a Convex doc to the shape the frontend expects
+function normalize(post: Doc<"posts">, commentCount = 0) {
+  return {
+    id:           post._id,
+    title:        post.title,
+    content:      post.content,
+    category:     post.category,
+    tags:         post.tags,
+    reactions:    post.reactions,
+    createdAt:    new Date(post._creationTime).toISOString(),
+    commentCount,
+  };
+}
+
+// GET /api/posts
+export const list = query({
+  args: {
+    category: v.optional(v.string()),
+    sort:     v.optional(v.string()),
+    search:   v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const allComments = await ctx.db.query("comments").collect();
+    const commentCounts = new Map<string, number>();
+    for (const c of allComments) {
+      const key = c.postId.toString();
+      commentCounts.set(key, (commentCounts.get(key) || 0) + 1);
+    }
+
+    let posts = await ctx.db.query("posts").collect();
+
+    if (args.category && args.category !== "all") {
+      posts = posts.filter(p => p.category === args.category);
+    }
+
+    if (args.search) {
+      const q = args.search.toLowerCase();
+      posts = posts.filter(p =>
+        p.title.toLowerCase().includes(q) ||
+        p.content.toLowerCase().includes(q) ||
+        p.tags.some(t => t.toLowerCase().includes(q))
+      );
+    }
+
+    let results = posts.map(p =>
+      normalize(p, commentCounts.get(p._id.toString()) || 0)
+    );
+
+    if (args.sort === "hot") {
+      const score = (p: ReturnType<typeof normalize>) =>
+        Object.values(p.reactions as Record<string, number>).reduce((s, v) => s + v, 0) * 2 + p.commentCount;
+      results.sort((a, b) => score(b) - score(a));
+    } else {
+      results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+
+    return results;
+  },
+});
+
+// GET /api/posts/:id
+export const get = query({
+  args: { id: v.id("posts") },
+  handler: async (ctx, args) => {
+    const post = await ctx.db.get(args.id);
+    if (!post) return null;
+
+    const comments = await ctx.db
+      .query("comments")
+      .withIndex("by_post", q => q.eq("postId", args.id))
+      .collect();
+
+    const normalizedComments = comments
+      .sort((a, b) => a._creationTime - b._creationTime)
+      .map(c => ({
+        id:        c._id,
+        postId:    c.postId,
+        content:   c.content,
+        nickname:  c.nickname,
+        createdAt: new Date(c._creationTime).toISOString(),
+      }));
+
+    return {
+      ...normalize(post, normalizedComments.length),
+      comments: normalizedComments,
+    };
+  },
+});
+
+// POST /api/posts
+export const create = mutation({
+  args: {
+    title:    v.string(),
+    content:  v.string(),
+    category: v.string(),
+    tags:     v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const id = await ctx.db.insert("posts", {
+      title:    args.title.trim().slice(0, 150),
+      content:  args.content.trim().slice(0, 5000),
+      category: CATEGORY_IDS.has(args.category) ? args.category : "general",
+      tags:     args.tags.map(t => t.trim().slice(0, 30)).slice(0, 5),
+      reactions: { "🔥": 0, "😱": 0, "☕": 0, "💀": 0, "👀": 0 },
+    });
+    const post = (await ctx.db.get(id))!;
+    return { ...normalize(post), commentCount: 0 };
+  },
+});
+
+// POST /api/posts/:id/react
+export const react = mutation({
+  args: {
+    id:    v.id("posts"),
+    emoji: v.string(),
+    delta: v.number(),
+  },
+  handler: async (ctx, args) => {
+    if (!VALID_EMOJIS.has(args.emoji)) throw new Error("Invalid emoji");
+    const post = await ctx.db.get(args.id);
+    if (!post) throw new Error("Post not found");
+
+    const reactions = { ...post.reactions };
+    const d = args.delta === -1 ? -1 : 1;
+    reactions[args.emoji] = Math.max(0, (reactions[args.emoji] || 0) + d);
+    await ctx.db.patch(args.id, { reactions });
+    return { reactions };
+  },
+});
+
+// GET /api/categories
+export const categories = query({
+  args: {},
+  handler: async (ctx) => {
+    const posts = await ctx.db.query("posts").collect();
+    return CATEGORIES.map(c => ({
+      ...c,
+      count: posts.filter(p => p.category === c.id).length,
+    }));
+  },
+});

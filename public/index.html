@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ANON.TEA — Spill Anonymously</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Trending Ticker -->
+  <div class="ticker-wrap">
+    <span class="ticker-label">☕ TRENDING</span>
+    <div class="ticker-track">
+      <span class="ticker-text" id="ticker">Loading the tea...</span>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-anon">ANON</span><span class="logo-tea">.TEA</span>
+      </div>
+      <p class="header-sub">where secrets find a home ☕</p>
+      <button class="spill-btn" id="open-new-post">+ SPILL THE TEA</button>
+    </div>
+  </header>
+
+  <!-- Sticky Controls -->
+  <div class="controls" id="controls">
+    <div class="controls-top">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search" placeholder="Search the tea..." class="search-input" />
+      </div>
+      <div class="sort-toggle">
+        <button class="sort-btn active" data-sort="new">✨ New</button>
+        <button class="sort-btn" data-sort="hot">🔥 Hot</button>
+      </div>
+    </div>
+    <div class="categories-wrap">
+      <div class="categories" id="categories">
+        <button class="cat-btn active" data-cat="all">☕ All Tea</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hot Right Now -->
+  <section class="hot-section" id="hot-section" style="display:none">
+    <div class="section-inner">
+      <h2 class="section-title">🔥 Hot Right Now</h2>
+      <div class="hot-grid" id="hot-posts"></div>
+    </div>
+  </section>
+
+  <!-- Main Feed -->
+  <main class="feed">
+    <div class="feed-inner">
+      <div class="posts-grid" id="posts-grid">
+        <div class="loading"><div class="spinner"></div> Brewing the tea...</div>
+      </div>
+      <div class="empty-state hidden" id="empty-state">
+        <div class="empty-icon">☕</div>
+        <div class="empty-text">No tea to spill here yet...</div>
+        <button class="empty-cta" id="empty-spill">Be the first to spill!</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- NEW POST MODAL -->
+  <div class="modal hidden" id="new-post-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>Spill Anonymously</h2>
+        <button class="modal-close" id="close-new-post" aria-label="Close">✕</button>
+      </div>
+      <form id="new-post-form">
+        <div class="form-group">
+          <label for="post-title">What's the tea? <span class="req">*</span></label>
+          <input type="text" id="post-title" placeholder="e.g. You won't believe what just happened..." maxlength="150" required autocomplete="off" />
+          <span class="char-count" id="title-count">0 / 150</span>
+        </div>
+        <div class="form-group">
+          <label for="post-content">Spill it all <span class="req">*</span></label>
+          <textarea id="post-content" placeholder="Okay so basically..." maxlength="5000" required></textarea>
+          <span class="char-count" id="content-count">0 / 5000</span>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="post-category">Category</label>
+            <div class="select-wrap">
+              <select id="post-category">
+                <option value="general">📣 General</option>
+                <option value="school">🏫 School</option>
+                <option value="drama">💔 Drama</option>
+                <option value="relationships">💑 Relationships</option>
+                <option value="work">💼 Work</option>
+                <option value="social">🎉 Social</option>
+                <option value="online">📱 Online</option>
+              </select>
+              <span class="select-arrow">▾</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="post-tags">Tags <span class="label-hint">(comma separated)</span></label>
+            <input type="text" id="post-tags" placeholder="drama, school, tea" autocomplete="off" />
+          </div>
+        </div>
+        <div class="form-footer">
+          <p class="anon-notice">🔒 100% anonymous — no account, no tracking, no IP logging</p>
+          <button type="submit" class="submit-btn" id="submit-post-btn">SPILL IT 🔥</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- POST DETAIL MODAL -->
+  <div class="modal hidden" id="post-modal">
+    <div class="modal-box modal-large">
+      <div class="modal-header modal-header-slim">
+        <span></span>
+        <button class="modal-close" id="close-post" aria-label="Close">✕</button>
+      </div>
+      <div id="post-content-area"></div>
+    </div>
+  </div>
+
+  <!-- Backdrop -->
+  <div class="backdrop hidden" id="backdrop"></div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
