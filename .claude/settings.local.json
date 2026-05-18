@@ -12,7 +12,13 @@
       "Bash(npx convex *)",
       "PowerShell(Get-ChildItem \"$env:USERPROFILE\\\\.convex\" -ErrorAction SilentlyContinue)",
       "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('convex' in p.dependencies\\)\")",
-      "Bash(node -e \"console.log\\(require\\('./node_modules/convex/package.json'\\).version\\)\")"
+      "Bash(node -e \"console.log\\(require\\('./node_modules/convex/package.json'\\).version\\)\")",
+      "Bash(curl -s -X POST https://colorless-sardine-123.convex.cloud/api/query -H \"Content-Type: application/json\" -d \"{\\\\\"path\\\\\":\\\\\"posts:list\\\\\",\\\\\"args\\\\\":{},\\\\\"format\\\\\":\\\\\"json\\\\\"}\")",
+      "Bash(curl -s http://localhost:4000/api/posts)",
+      "Bash(curl -sv \"http://localhost:4000/api/posts?category=all&sort=new\")",
+      "Bash(curl -s -X POST https://colorless-sardine-123.convex.cloud/api/query -H \"Content-Type: application/json\" -d \"{\\\\\"path\\\\\":\\\\\"posts:categories\\\\\",\\\\\"args\\\\\":{},\\\\\"format\\\\\":\\\\\"json\\\\\"}\")",
+      "Bash(curl -s -X POST \"http://localhost:4000/api/posts?category=all&sort=new\" -X GET)",
+      "Bash(curl -s -X POST http://localhost:4000/api/posts -H \"Content-Type: application/json\" -d \"{\\\\\"title\\\\\":\\\\\"test post\\\\\",\\\\\"content\\\\\":\\\\\"test content\\\\\",\\\\\"category\\\\\":\\\\\"general\\\\\",\\\\\"tags\\\\\":[]}\")"
     ]
   }
 }
