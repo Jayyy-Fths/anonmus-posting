@@ -20,7 +20,17 @@
       "Bash(curl -s -X POST \"http://localhost:4000/api/posts?category=all&sort=new\" -X GET)",
       "Bash(curl -s -X POST http://localhost:4000/api/posts -H \"Content-Type: application/json\" -d \"{\\\\\"title\\\\\":\\\\\"test post\\\\\",\\\\\"content\\\\\":\\\\\"test content\\\\\",\\\\\"category\\\\\":\\\\\"general\\\\\",\\\\\"tags\\\\\":[]}\")",
       "Bash(node -e \"require\\('http'\\).get\\('http://localhost:4000/api/posts', r => { let d=''; r.on\\('data',c=>d+=c\\); r.on\\('end',\\(\\)=>console.log\\('STATUS:',r.statusCode,'BODY:',d.slice\\(0,100\\)\\)\\); }\\).on\\('error',e=>console.log\\('NO SERVER:',e.message\\)\\)\")",
-      "Bash(npx vercel *)"
+      "Bash(npx vercel *)",
+      "Bash(curl -s -X POST https://anontea.vercel.app/api/posts -H \"Content-Type: application/json\" -d \"{\\\\\"title\\\\\":\\\\\"test\\\\\",\\\\\"content\\\\\":\\\\\"test content\\\\\",\\\\\"category\\\\\":\\\\\"general\\\\\",\\\\\"tags\\\\\":[]}\")",
+      "Bash(curl -s -X POST https://impartial-tiger-583.convex.cloud/api/mutation -H \"Content-Type: application/json\" -d \"{\\\\\"path\\\\\": \\\\\"posts:create\\\\\", \\\\\"args\\\\\": {\\\\\"title\\\\\": \\\\\"test\\\\\", \\\\\"content\\\\\": \\\\\"test content\\\\\", \\\\\"category\\\\\": \\\\\"general\\\\\", \\\\\"tags\\\\\": []}, \\\\\"format\\\\\": \\\\\"json\\\\\"}\")",
+      "Bash(curl -s -X POST https://impartial-tiger-583.convex.cloud/api/query -H \"Content-Type: application/json\" -d \"{\\\\\"path\\\\\": \\\\\"posts:list\\\\\", \\\\\"args\\\\\": {}, \\\\\"format\\\\\": \\\\\"json\\\\\"}\")",
+      "Bash(curl -s -X POST https://impartial-tiger-583.convex.cloud/api/query -H \"Content-Type: application/json\" -d \"{\\\\\"path\\\\\": \\\\\"posts:categories\\\\\", \\\\\"args\\\\\": {}, \\\\\"format\\\\\": \\\\\"json\\\\\"}\")",
+      "Bash(curl -s -X POST https://impartial-tiger-583.convex.cloud/api/mutation -H \"Content-Type: application/json\" -d \"{\\\\\"path\\\\\": \\\\\"posts:create\\\\\", \\\\\"args\\\\\": {\\\\\"title\\\\\": \\\\\"test\\\\\", \\\\\"content\\\\\": \\\\\"test content\\\\\", \\\\\"category\\\\\": \\\\\"general\\\\\", \\\\\"tags\\\\\": []}, \\\\\"format\\\\\": \\\\\"json\\\\\"}\" -v)",
+      "Bash(curl -s -X POST https://impartial-tiger-583.convex.cloud/api/mutation -H \"Content-Type: application/json\" -d \"{\\\\\"path\\\\\": \\\\\"posts:create\\\\\", \\\\\"args\\\\\": {\\\\\"title\\\\\": \\\\\"test\\\\\", \\\\\"content\\\\\": \\\\\"test content\\\\\", \\\\\"category\\\\\": \\\\\"general\\\\\", \\\\\"tags\\\\\": []}}\")",
+      "Bash(curl -s -X POST https://colorless-sardine-123.convex.cloud/api/mutation -H \"Content-Type: application/json\" -d \"{\\\\\"path\\\\\": \\\\\"posts:create\\\\\", \\\\\"args\\\\\": {\\\\\"title\\\\\": \\\\\"test\\\\\", \\\\\"content\\\\\": \\\\\"test content\\\\\", \\\\\"category\\\\\": \\\\\"general\\\\\", \\\\\"tags\\\\\": []}, \\\\\"format\\\\\": \\\\\"json\\\\\"}\")",
+      "Bash(npx tsc *)",
+      "Bash(node_modules\\\\.bin\\\\tsc --noEmit)",
+      "Bash(node \"node_modules/typescript/bin/tsc\" --noEmit)"
     ]
   }
 }

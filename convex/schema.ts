@@ -7,7 +7,13 @@ export default defineSchema({
     content:  v.string(),
     category: v.string(),
     tags:     v.array(v.string()),
-    reactions: v.record(v.string(), v.number()),
+    reactions: v.object({
+      fire:   v.number(),
+      scream: v.number(),
+      coffee: v.number(),
+      skull:  v.number(),
+      eyes:   v.number(),
+    }),
   }),
 
   comments: defineTable({

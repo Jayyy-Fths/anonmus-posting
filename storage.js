@@ -7,6 +7,17 @@ const crypto  = require('crypto');
 
 const CONVEX_URL = process.env.CONVEX_URL;
 
+// Convex stores reactions with ASCII keys; convert back to emoji for the frontend.
+const KEY_TO_EMOJI = { fire: '🔥', scream: '😱', coffee: '☕', skull: '💀', eyes: '👀' };
+function toEmojiReactions(r) {
+  const out = {};
+  for (const [k, v] of Object.entries(r)) out[KEY_TO_EMOJI[k] ?? k] = v;
+  return out;
+}
+function normalizeConvexPost(post) {
+  return { ...post, reactions: toEmojiReactions(post.reactions) };
+}
+
 // ─── Convex HTTP helpers ──────────────────────────────────────────────────────
 // Used when CONVEX_URL is set in .env. Calls your deployed Convex functions.
 
@@ -75,7 +86,8 @@ module.exports = {
 
   async getPosts({ category, sort, search } = {}) {
     if (CONVEX_URL) {
-      return convexQuery('posts:list', { category, sort, search });
+      const posts = await convexQuery('posts:list', { category, sort, search });
+      return posts.map(normalizeConvexPost);
     }
 
     const db = readDB();
@@ -111,7 +123,8 @@ module.exports = {
 
   async getPost(id) {
     if (CONVEX_URL) {
-      return convexQuery('posts:get', { id });
+      const post = await convexQuery('posts:get', { id });
+      return post ? normalizeConvexPost(post) : null;
     }
 
     const db = readDB();
@@ -125,7 +138,8 @@ module.exports = {
 
   async createPost({ title, content, category, tags }) {
     if (CONVEX_URL) {
-      return convexMutation('posts:create', { title, content, category, tags });
+      const post = await convexMutation('posts:create', { title, content, category, tags });
+      return normalizeConvexPost(post);
     }
 
     const db = readDB();
@@ -147,7 +161,8 @@ module.exports = {
 
   async reactToPost(id, emoji, delta) {
     if (CONVEX_URL) {
-      return convexMutation('posts:react', { id, emoji, delta });
+      const result = await convexMutation('posts:react', { id, emoji, delta });
+      return { reactions: toEmojiReactions(result.reactions) };
     }
 
     const db = readDB();

@@ -18,24 +18,19 @@ const VALID_EMOJIS = new Set(["🔥", "😱", "☕", "💀", "👀"]);
 const EMOJI_TO_KEY: Record<string, string> = {
   "🔥": "fire", "😱": "scream", "☕": "coffee", "💀": "skull", "👀": "eyes",
 };
-const KEY_TO_EMOJI: Record<string, string> = {
-  "fire": "🔥", "scream": "😱", "coffee": "☕", "skull": "💀", "eyes": "👀",
-};
+
 const DEFAULT_REACTIONS = { fire: 0, scream: 0, coffee: 0, skull: 0, eyes: 0 };
 
-// Normalize a Convex doc to the shape the frontend expects
+// Normalize a Convex doc — reactions use ASCII keys (fire/scream/coffee/skull/eyes)
+// The Node.js layer in storage.js converts them back to emoji for the frontend.
 function normalize(post: Doc<"posts">, commentCount = 0) {
-  const reactions: Record<string, number> = {};
-  for (const [key, count] of Object.entries(post.reactions)) {
-    reactions[KEY_TO_EMOJI[key] ?? key] = count as number;
-  }
   return {
     id:        post._id,
     title:     post.title,
     content:   post.content,
     category:  post.category,
     tags:      post.tags,
-    reactions,
+    reactions: post.reactions,
     createdAt: new Date(post._creationTime).toISOString(),
     commentCount,
   };
@@ -149,17 +144,14 @@ export const react = mutation({
     const post = await ctx.db.get(args.id);
     if (!post) throw new Error("Post not found");
 
-    const key = EMOJI_TO_KEY[args.emoji]!;
+    const key = EMOJI_TO_KEY[args.emoji] as keyof typeof post.reactions;
+    if (!key) throw new Error("Invalid emoji");
     const reactions = { ...post.reactions };
     const d = args.delta === -1 ? -1 : 1;
-    reactions[key] = Math.max(0, ((reactions[key] as number) || 0) + d);
+    reactions[key] = Math.max(0, (reactions[key] || 0) + d);
     await ctx.db.patch(args.id, { reactions });
-
-    const emojiReactions: Record<string, number> = {};
-    for (const [k, v] of Object.entries(reactions)) {
-      emojiReactions[KEY_TO_EMOJI[k] ?? k] = v as number;
-    }
-    return { reactions: emojiReactions };
+    // Return ASCII keys — storage.js converts to emoji
+    return { reactions };
   },
 });
 
