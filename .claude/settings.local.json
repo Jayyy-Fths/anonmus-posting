@@ -30,7 +30,9 @@
       "Bash(curl -s -X POST https://colorless-sardine-123.convex.cloud/api/mutation -H \"Content-Type: application/json\" -d \"{\\\\\"path\\\\\": \\\\\"posts:create\\\\\", \\\\\"args\\\\\": {\\\\\"title\\\\\": \\\\\"test\\\\\", \\\\\"content\\\\\": \\\\\"test content\\\\\", \\\\\"category\\\\\": \\\\\"general\\\\\", \\\\\"tags\\\\\": []}, \\\\\"format\\\\\": \\\\\"json\\\\\"}\")",
       "Bash(npx tsc *)",
       "Bash(node_modules\\\\.bin\\\\tsc --noEmit)",
-      "Bash(node \"node_modules/typescript/bin/tsc\" --noEmit)"
+      "Bash(node \"node_modules/typescript/bin/tsc\" --noEmit)",
+      "Bash(Get-ChildItem -Force)",
+      "Bash(Select-Object Name, PSIsContainer)"
     ]
   }
 }

@@ -25,7 +25,10 @@
         <span class="logo-anon">ANON</span><span class="logo-tea">.TEA</span>
       </div>
       <p class="header-sub">where secrets find a home ☕</p>
-      <button class="spill-btn" id="open-new-post">+ SPILL THE TEA</button>
+      <div class="header-actions">
+        <button class="spill-btn" id="open-new-post">+ SPILL THE TEA</button>
+        <button class="theme-toggle-btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">☀️</button>
+      </div>
     </div>
   </header>
 
@@ -40,6 +43,7 @@
         <button class="sort-btn active" data-sort="new">✨ New</button>
         <button class="sort-btn" data-sort="hot">🔥 Hot</button>
       </div>
+      <button class="random-btn" onclick="openRandomPost()" title="Open a random post (R)">🎲 Random</button>
     </div>
     <div class="categories-wrap">
       <div class="categories" id="categories">
@@ -47,6 +51,14 @@
       </div>
     </div>
   </div>
+
+  <!-- Trending Tags -->
+  <section class="tags-section" id="tags-section" style="display:none">
+    <div class="section-inner">
+      <h2 class="section-title">🏷️ Trending Tags</h2>
+      <div class="tags-cloud" id="tags-cloud"></div>
+    </div>
+  </section>
 
   <!-- Hot Right Now -->
   <section class="hot-section" id="hot-section" style="display:none">
@@ -88,6 +100,20 @@
           <textarea id="post-content" placeholder="Okay so basically..." maxlength="5000" required></textarea>
           <span class="char-count" id="content-count">0 / 5000</span>
         </div>
+        <div class="form-group">
+          <label>Image <span class="label-hint">(optional · max 5 MB)</span></label>
+          <label class="image-upload-area" id="image-upload-area" for="post-image">
+            <input type="file" id="post-image" accept="image/*" style="display:none" />
+            <div class="image-upload-placeholder" id="image-upload-placeholder">
+              📸 <span>Click or drag &amp; drop an image</span>
+            </div>
+            <div class="image-preview-wrap hidden" id="image-preview-wrap">
+              <img id="image-preview-img" src="" alt="Preview" />
+              <button type="button" class="image-remove-btn" onclick="removeImage();event.preventDefault()">✕</button>
+            </div>
+          </label>
+        </div>
+
         <div class="form-row">
           <div class="form-group">
             <label for="post-category">Category</label>

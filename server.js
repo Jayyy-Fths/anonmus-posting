@@ -67,11 +67,21 @@ app.get('/api/posts', async (req, res) => {
   }
 });
 
+app.post('/api/upload-url', async (req, res) => {
+  try {
+    const uploadUrl = await storage.generateUploadUrl();
+    if (!uploadUrl) return res.status(503).json({ error: 'Image uploads require Convex backend' });
+    res.json({ url: uploadUrl });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/posts', async (req, res) => {
   if (!await checkRate(req.ip, 'post', 5))
     return res.status(429).json({ error: 'Slow down — max 5 posts per minute' });
 
-  const { title, content, category, tags } = req.body;
+  const { title, content, category, tags, imageId } = req.body;
   if (typeof title !== 'string' || !title.trim())
     return res.status(400).json({ error: 'Title is required' });
   if (typeof content !== 'string' || !content.trim())
@@ -85,6 +95,7 @@ app.post('/api/posts', async (req, res) => {
       tags: Array.isArray(tags)
         ? tags.filter(t => typeof t === 'string' && t.trim()).map(t => t.trim().slice(0, 30)).slice(0, 5)
         : [],
+      imageId: typeof imageId === 'string' ? imageId : undefined,
     });
     res.status(201).json(post);
   } catch (e) {
@@ -148,6 +159,54 @@ app.delete('/api/posts/:id', async (req, res) => {
     const result = await storage.deletePost(req.params.id);
     if (!result) return res.status(404).json({ error: 'Not found' });
     res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/posts/:id/view', async (req, res) => {
+  try {
+    const result = await storage.incrementView(req.params.id);
+    if (!result) return res.status(404).json({ error: 'Not found' });
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/posts/:id/pin', async (req, res) => {
+  const auth = req.headers.authorization;
+  if (!process.env.ADMIN_SECRET || auth !== `Bearer ${process.env.ADMIN_SECRET}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const result = await storage.pinPost(req.params.id);
+    if (!result) return res.status(404).json({ error: 'Not found' });
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/posts/:id/flag', async (req, res) => {
+  if (!await checkRate(req.ip, 'flag', 5))
+    return res.status(429).json({ error: 'Too many reports' });
+  try {
+    const result = await storage.flagPost(req.params.id);
+    if (!result) return res.status(404).json({ error: 'Not found' });
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/comments/:id/like', async (req, res) => {
+  if (!await checkRate(req.ip, 'like', 30))
+    return res.status(429).json({ error: 'Too many likes' });
+  try {
+    const result = await storage.likeComment(req.params.id);
+    if (!result) return res.status(404).json({ error: 'Not found' });
+    res.json(result);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

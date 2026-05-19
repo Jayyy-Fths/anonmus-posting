@@ -84,6 +84,13 @@ function postScore(post, commentCount) {
 
 module.exports = {
 
+  async generateUploadUrl() {
+    if (CONVEX_URL) {
+      return convexMutation('posts:generateUploadUrl', {});
+    }
+    return null;
+  },
+
   async getPosts({ category, sort, search } = {}) {
     if (CONVEX_URL) {
       const posts = await convexQuery('posts:list', { category, sort, search });
@@ -99,6 +106,10 @@ module.exports = {
     let posts = db.posts.map(p => ({
       ...p,
       commentCount: commentCounts.get(p.id) || 0,
+      views:    p.views  || 0,
+      pinned:   p.pinned || false,
+      flags:    p.flags  || 0,
+      imageUrl: null,
     }));
 
     if (category && category !== 'all')
@@ -132,13 +143,24 @@ module.exports = {
     if (!post) return null;
     const comments = db.comments
       .filter(c => c.postId === id)
-      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-    return { ...post, commentCount: comments.length, comments };
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+      .map(c => ({ ...c, likes: c.likes || 0 }));
+    return {
+      ...post,
+      views:        post.views  || 0,
+      pinned:       post.pinned || false,
+      flags:        post.flags  || 0,
+      imageUrl:     null,
+      commentCount: comments.length,
+      comments,
+    };
   },
 
-  async createPost({ title, content, category, tags }) {
+  async createPost({ title, content, category, tags, imageId }) {
     if (CONVEX_URL) {
-      const post = await convexMutation('posts:create', { title, content, category, tags });
+      const args = { title, content, category, tags };
+      if (imageId) args.imageId = imageId;
+      const post = await convexMutation('posts:create', args);
       return normalizeConvexPost(post);
     }
 
@@ -152,6 +174,10 @@ module.exports = {
         ? tags.filter(t => typeof t === 'string' && t.trim()).map(t => t.trim().slice(0, 30)).slice(0, 5)
         : [],
       reactions: { '🔥': 0, '😱': 0, '☕': 0, '💀': 0, '👀': 0 },
+      views:    0,
+      pinned:   false,
+      flags:    0,
+      imageUrl: null,
       createdAt: new Date().toISOString(),
     };
     db.posts.unshift(post);
@@ -189,11 +215,60 @@ module.exports = {
       nickname: (typeof nickname === 'string' && nickname.trim())
         ? nickname.trim().slice(0, 30)
         : 'Anonymous',
+      likes:     0,
       createdAt: new Date().toISOString(),
     };
     db.comments.push(comment);
     writeDB(db);
     return comment;
+  },
+
+  async incrementView(id) {
+    if (CONVEX_URL) {
+      return convexMutation('posts:incrementView', { id });
+    }
+    const db = readDB();
+    const post = db.posts.find(p => p.id === id);
+    if (!post) return null;
+    post.views = (post.views || 0) + 1;
+    writeDB(db);
+    return { views: post.views };
+  },
+
+  async pinPost(id) {
+    if (CONVEX_URL) {
+      return convexMutation('posts:pin', { id });
+    }
+    const db = readDB();
+    const post = db.posts.find(p => p.id === id);
+    if (!post) return null;
+    post.pinned = !post.pinned;
+    writeDB(db);
+    return { pinned: !!post.pinned };
+  },
+
+  async flagPost(id) {
+    if (CONVEX_URL) {
+      return convexMutation('posts:flag', { id });
+    }
+    const db = readDB();
+    const post = db.posts.find(p => p.id === id);
+    if (!post) return null;
+    post.flags = (post.flags || 0) + 1;
+    writeDB(db);
+    return { flags: post.flags };
+  },
+
+  async likeComment(id) {
+    if (CONVEX_URL) {
+      return convexMutation('comments:like', { id });
+    }
+    const db = readDB();
+    const comment = db.comments.find(c => c.id === id);
+    if (!comment) return null;
+    comment.likes = (comment.likes || 0) + 1;
+    writeDB(db);
+    return { likes: comment.likes };
   },
 
   async deletePost(id) {

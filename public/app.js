@@ -1,10 +1,45 @@
 'use strict';
 
-// ─── State ───────────────────────────────────────────────────────────────────
+// ─── State ────────────────────────────────────────────────────────────────────
 const state = {
   posts: [],
   filter: { category: 'all', sort: 'new', search: '' },
 };
+
+// ─── Theme (Feature 13: light/dark mode) ─────────────────────────────────────
+let darkMode = localStorage.getItem('anontea_theme') !== 'light';
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !darkMode);
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = darkMode ? '☀️' : '🌙';
+}
+function toggleTheme() {
+  darkMode = !darkMode;
+  localStorage.setItem('anontea_theme', darkMode ? 'dark' : 'light');
+  applyTheme();
+}
+applyTheme();
+
+// ─── Bookmarks (Feature 1) ────────────────────────────────────────────────────
+const bookmarks = new Set(JSON.parse(localStorage.getItem('anontea_bookmarks') || '[]'));
+function saveBookmarks() { localStorage.setItem('anontea_bookmarks', JSON.stringify([...bookmarks])); }
+function isBookmarked(id) { return bookmarks.has(id); }
+function toggleBookmark(e, id) {
+  e.stopPropagation();
+  if (bookmarks.has(id)) { bookmarks.delete(id); toast('Bookmark removed'); }
+  else { bookmarks.add(id); toast('Bookmarked! 🔖'); }
+  saveBookmarks();
+  loadPosts();
+}
+
+// ─── Liked comments (Feature 10) ─────────────────────────────────────────────
+const likedComments = new Set(JSON.parse(localStorage.getItem('anontea_liked_comments') || '[]'));
+function saveLikedComments() { localStorage.setItem('anontea_liked_comments', JSON.stringify([...likedComments])); }
+function hasLikedComment(id) { return likedComments.has(id); }
+
+// ─── Flagged posts (Feature 12) ───────────────────────────────────────────────
+const flaggedPosts = new Set(JSON.parse(localStorage.getItem('anontea_flagged') || '[]'));
+function saveFlagged() { localStorage.setItem('anontea_flagged', JSON.stringify([...flaggedPosts])); }
 
 // ─── Admin mode ───────────────────────────────────────────────────────────────
 let adminMode = sessionStorage.getItem('anontea_admin') === '1';
@@ -52,6 +87,102 @@ async function deletePost(e, postId) {
   }
 }
 
+// ─── Pin post (Feature 11) ────────────────────────────────────────────────────
+async function pinPost(e, postId) {
+  e.stopPropagation();
+  const secret = sessionStorage.getItem('anontea_admin_secret') || '';
+  try {
+    const res = await fetch(`/api/posts/${postId}/pin`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${secret}`, 'Content-Type': 'application/json' },
+    });
+    if (res.status === 401) { toast('Wrong admin password', 'error'); return; }
+    const { pinned } = await res.json();
+    toast(pinned ? '📌 Post pinned to top' : 'Post unpinned');
+    await loadPosts();
+  } catch (err) {
+    toast('Pin failed: ' + err.message, 'error');
+  }
+}
+
+// ─── Flag post (Feature 12) ───────────────────────────────────────────────────
+async function flagPost(e, postId) {
+  e.stopPropagation();
+  if (flaggedPosts.has(postId)) { toast('Already reported', 'error'); return; }
+  if (!confirm('Report this post for inappropriate content?')) return;
+  flaggedPosts.add(postId);
+  saveFlagged();
+  try {
+    await api('POST', `/api/posts/${postId}/flag`, {});
+    toast('Post reported. Thank you!');
+  } catch (err) {
+    flaggedPosts.delete(postId);
+    saveFlagged();
+    toast(err.message, 'error');
+  }
+}
+
+// ─── Comment like (Feature 10) ────────────────────────────────────────────────
+async function likeComment(e, commentId) {
+  e.stopPropagation();
+  if (hasLikedComment(commentId)) { toast('Already liked!'); return; }
+  const btn = e.target.closest('.comment-like-btn');
+  likedComments.add(commentId);
+  saveLikedComments();
+  if (btn) btn.classList.add('liked');
+  try {
+    const { likes } = await api('POST', `/api/comments/${commentId}/like`, {});
+    if (btn) btn.querySelector('.like-count').textContent = likes;
+  } catch (err) {
+    likedComments.delete(commentId);
+    saveLikedComments();
+    if (btn) btn.classList.remove('liked');
+    toast(err.message, 'error');
+  }
+}
+
+// ─── Image upload (picture feature) ──────────────────────────────────────────
+let pendingImageFile = null;
+
+function handleImageFile(file) {
+  if (!file || !file.type.startsWith('image/')) { toast('Please pick an image file', 'error'); return; }
+  if (file.size > 5 * 1024 * 1024) { toast('Image must be under 5 MB', 'error'); return; }
+  pendingImageFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('image-preview-img').src = e.target.result;
+    document.getElementById('image-preview-wrap').classList.remove('hidden');
+    document.getElementById('image-upload-placeholder').classList.add('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeImage() {
+  pendingImageFile = null;
+  const input = document.getElementById('post-image');
+  if (input) input.value = '';
+  document.getElementById('image-preview-img').src = '';
+  document.getElementById('image-preview-wrap').classList.add('hidden');
+  document.getElementById('image-upload-placeholder').classList.remove('hidden');
+}
+
+// Wire up file input + drag-and-drop after DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  const fileInput = document.getElementById('post-image');
+  if (fileInput) fileInput.addEventListener('change', () => handleImageFile(fileInput.files[0]));
+
+  const area = document.getElementById('image-upload-area');
+  if (area) {
+    area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('drag-over'); });
+    area.addEventListener('dragleave', () => area.classList.remove('drag-over'));
+    area.addEventListener('drop', e => {
+      e.preventDefault();
+      area.classList.remove('drag-over');
+      handleImageFile(e.dataTransfer.files[0]);
+    });
+  }
+});
+
 // ─── Local reaction tracking ──────────────────────────────────────────────────
 const reacted = JSON.parse(localStorage.getItem('anontea_reactions') || '{}');
 function saveReacted() { localStorage.setItem('anontea_reactions', JSON.stringify(reacted)); }
@@ -86,18 +217,41 @@ function isNew(dateStr) {
   return Date.now() - new Date(dateStr).getTime() < 3600000;
 }
 
+// Feature 7: reading time estimate
+function readingTime(content) {
+  const words = content.trim().split(/\s+/).filter(Boolean).length;
+  return `~${Math.max(1, Math.round(words / 200))} min read`;
+}
+
+// Feature 8: consistent avatar color per nickname
+const AVATAR_COLORS = ['#ff2d78','#8b5cf6','#10d9a0','#f59e0b','#3b82f6','#ec4899','#06b6d4','#84cc16'];
+function avatarColor(nickname) {
+  let hash = 0;
+  for (let i = 0; i < nickname.length; i++) hash = (Math.imul(31, hash) + nickname.charCodeAt(i)) | 0;
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+// ─── URL State (Feature 4) ────────────────────────────────────────────────────
+function updateURL() {
+  const params = new URLSearchParams();
+  if (state.filter.category !== 'all') params.set('cat', state.filter.category);
+  if (state.filter.sort !== 'new')     params.set('sort', state.filter.sort);
+  if (state.filter.search)             params.set('q', state.filter.search);
+  const str = params.toString();
+  history.replaceState(null, '', location.pathname + (str ? '?' + str : '') + (location.hash || ''));
+}
+
 // ─── API ──────────────────────────────────────────────────────────────────────
 async function api(method, url, body) {
   const res = await fetch(url, {
     method,
-    headers: body ? { 'Content-Type': 'application/json' } : {},
-    body: body ? JSON.stringify(body) : undefined,
+    headers: body !== undefined ? { 'Content-Type': 'application/json' } : {},
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
   let data;
-  try {
-    data = JSON.parse(text);
-  } catch {
+  try { data = JSON.parse(text); }
+  catch {
     console.error(`[ANON.TEA] Bad response from ${method} ${url}`, { status: res.status, body: text.slice(0, 500) });
     throw new Error(`Server error (status ${res.status}) — check the browser console`);
   }
@@ -153,20 +307,29 @@ function renderCard(post) {
     </button>`;
   }).join('');
 
-  const newBadge = isNew(post.createdAt)
-    ? `<span class="post-card-new-badge">NEW</span>` : '';
+  const newBadge    = isNew(post.createdAt) ? `<span class="post-card-new-badge">NEW</span>` : '';
+  const pinnedBadge = post.pinned ? `<span class="post-card-pinned-label">📌 Pinned</span>` : '';
+  const rt          = readingTime(post.content);
+  const bkIcon      = isBookmarked(post.id) ? '🔖' : '🏷️';
 
-  const adminDelete = adminMode
+  const imageHtml = post.imageUrl
+    ? `<div class="post-card-image"><img src="${esc(post.imageUrl)}" alt="" loading="lazy" /></div>`
+    : '';
+
+  const adminActions = adminMode
     ? `<div class="admin-actions" onclick="event.stopPropagation()">
-        <button class="admin-delete-btn" onclick="deletePost(event,'${esc(post.id)}')">🗑️ Delete post</button>
+        <button class="admin-delete-btn" onclick="deletePost(event,'${esc(post.id)}')">🗑️ Delete</button>
+        <button class="admin-pin-btn" onclick="pinPost(event,'${esc(post.id)}')">${post.pinned ? '📌 Unpin' : '📌 Pin'}</button>
        </div>`
     : '';
 
   return `
-    <article class="post-card" onclick="openPost('${esc(post.id)}')">
+    <article class="post-card${post.pinned ? ' pinned' : ''}" onclick="openPost('${esc(post.id)}')">
       ${newBadge}
+      ${imageHtml}
       <div class="post-card-top">
         <span class="cat-badge">${esc(CAT_LABEL[post.category] || post.category)}</span>
+        ${pinnedBadge}
         ${tags}
       </div>
       <div class="post-card-title">${esc(post.title)}</div>
@@ -175,24 +338,49 @@ function renderCard(post) {
         <div class="post-reactions">${pills}</div>
         <div class="post-meta">
           <span>💬 ${post.commentCount}</span>
+          <span>👁 ${post.views || 0}</span>
+          <span>${rt}</span>
           <span>${timeAgo(post.createdAt)}</span>
+          <button class="bookmark-small-btn${isBookmarked(post.id) ? ' bookmarked' : ''}"
+            onclick="toggleBookmark(event,'${esc(post.id)}')"
+            title="${isBookmarked(post.id) ? 'Remove bookmark' : 'Bookmark'}">${bkIcon}</button>
         </div>
       </div>
-      ${adminDelete}
+      ${adminActions}
     </article>`;
 }
 
 // ─── Load Posts ───────────────────────────────────────────────────────────────
 async function loadPosts() {
-  const grid = document.getElementById('posts-grid');
+  const grid  = document.getElementById('posts-grid');
   const empty = document.getElementById('empty-state');
   grid.innerHTML = '<div class="loading"><div class="spinner"></div> Brewing the tea...</div>';
   empty.classList.add('hidden');
 
   try {
-    const params = new URLSearchParams({ category: state.filter.category, sort: state.filter.sort });
-    if (state.filter.search) params.set('search', state.filter.search);
-    state.posts = await api('GET', `/api/posts?${params}`);
+    const isBookmarksView = state.filter.category === '__bookmarks__';
+    const params = new URLSearchParams({
+      category: isBookmarksView ? 'all' : state.filter.category,
+      sort:     state.filter.sort,
+    });
+    if (state.filter.search && !isBookmarksView) params.set('search', state.filter.search);
+
+    let posts = await api('GET', `/api/posts?${params}`);
+
+    if (isBookmarksView) {
+      posts = posts.filter(p => bookmarks.has(p.id));
+      if (state.filter.search) {
+        const q = state.filter.search.toLowerCase();
+        posts = posts.filter(p =>
+          p.title.toLowerCase().includes(q) ||
+          p.content.toLowerCase().includes(q) ||
+          (p.tags || []).some(t => t.toLowerCase().includes(q))
+        );
+      }
+    }
+
+    state.posts = posts;
+    updateURL();
 
     if (state.posts.length === 0) {
       grid.innerHTML = '';
@@ -202,6 +390,7 @@ async function loadPosts() {
     }
     renderHot();
     renderTicker();
+    renderTrendingTags();
   } catch {
     grid.innerHTML = '<div class="loading">Could not load posts. Is the server running?</div>';
   }
@@ -213,7 +402,7 @@ function hotScore(p) {
 }
 
 function renderHot() {
-  const sec = document.getElementById('hot-section');
+  const sec       = document.getElementById('hot-section');
   const container = document.getElementById('hot-posts');
   const top = [...state.posts].sort((a, b) => hotScore(b) - hotScore(a)).slice(0, 3);
 
@@ -240,31 +429,77 @@ function renderTicker() {
   el.textContent = state.posts.slice(0, 10).map(p => `☕  ${p.title}`).join('   ·   ') + '   ·   ';
 }
 
-// ─── Load Categories ──────────────────────────────────────────────────────────
+// ─── Trending Tags (Feature 3) ────────────────────────────────────────────────
+function renderTrendingTags() {
+  const section = document.getElementById('tags-section');
+  if (!section) return;
+  const tagCounts = new Map();
+  for (const post of state.posts) {
+    for (const tag of (post.tags || [])) {
+      if (tag) tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+    }
+  }
+  if (tagCounts.size === 0) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  const sorted = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20);
+  document.getElementById('tags-cloud').innerHTML = sorted.map(([tag, count]) =>
+    `<button class="tag-cloud-btn" onclick="filterByTag('${esc(tag)}')">#${esc(tag)} <span class="tag-cloud-count">${count}</span></button>`
+  ).join('');
+}
+
+function filterByTag(tag) {
+  state.filter.search = tag;
+  document.getElementById('search').value = tag;
+  updateURL();
+  loadPosts();
+}
+
+// ─── Load Categories (Feature 14: count badges) ───────────────────────────────
 async function loadCategories() {
   try {
     const cats = await api('GET', '/api/categories');
     const container = document.getElementById('categories');
+    // Rebuild non-"All" buttons
+    container.querySelectorAll('.cat-btn:not([data-cat="all"])').forEach(b => b.remove());
+
     cats.forEach(cat => {
       const btn = document.createElement('button');
       btn.className = 'cat-btn';
       btn.dataset.cat = cat.id;
-      btn.textContent = cat.count > 0 ? `${cat.label} (${cat.count})` : cat.label;
+      btn.innerHTML = esc(cat.label) + (cat.count > 0
+        ? ` <span class="cat-count-badge">${cat.count}</span>` : '');
       btn.addEventListener('click', () => setCategory(cat.id));
       container.appendChild(btn);
     });
+
+    // Bookmarks pseudo-category (Feature 1)
+    if (!document.querySelector('[data-cat="__bookmarks__"]')) {
+      const bkBtn = document.createElement('button');
+      bkBtn.className = 'cat-btn';
+      bkBtn.dataset.cat = '__bookmarks__';
+      bkBtn.textContent = '🔖 Bookmarks';
+      bkBtn.addEventListener('click', () => setCategory('__bookmarks__'));
+      container.appendChild(bkBtn);
+    }
+
+    // Restore active state
+    document.querySelectorAll('.cat-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.cat === state.filter.category)
+    );
   } catch {}
 }
 
 function setCategory(cat) {
   state.filter.category = cat;
   document.querySelectorAll('.cat-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+  updateURL();
   loadPosts();
 }
 
 function setSort(sort) {
   state.filter.sort = sort;
   document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === sort));
+  updateURL();
   loadPosts();
 }
 
@@ -287,6 +522,8 @@ async function openPost(id) {
   openModal('post-modal');
   const area = document.getElementById('post-content-area');
   area.innerHTML = '<div class="loading" style="padding:80px 0"><div class="spinner"></div> Loading...</div>';
+  // Feature 2: view counter (fire-and-forget)
+  api('POST', `/api/posts/${id}/view`, {}).catch(() => {});
   try {
     const post = await api('GET', `/api/posts/${id}`);
     renderPostDetail(post);
@@ -310,14 +547,37 @@ function renderPostDetail(post) {
     </button>`;
   }).join('');
 
+  // Feature 8: avatar colors; Feature 9: char countdown; Feature 10: comment likes
   const commentsHtml = post.comments.length === 0
     ? `<div class="no-comments">No comments yet — be the first to reply!</div>`
-    : post.comments.map(c => `
-        <div class="comment-item">
-          <div class="comment-nick">~ ${esc(c.nickname)}</div>
-          <div class="comment-body">${esc(c.content)}</div>
-          <div class="comment-time">${timeAgo(c.createdAt)}</div>
-        </div>`).join('');
+    : post.comments.map(c => {
+        const color  = avatarColor(c.nickname);
+        const liked  = hasLikedComment(c.id);
+        return `
+          <div class="comment-item">
+            <div class="comment-nick">
+              <span class="comment-avatar" style="background:${color}"></span>
+              ~ ${esc(c.nickname)}
+            </div>
+            <div class="comment-body">${esc(c.content)}</div>
+            <div class="comment-footer">
+              <span class="comment-time">${timeAgo(c.createdAt)}</span>
+              <button class="comment-like-btn${liked ? ' liked' : ''}" onclick="likeComment(event,'${esc(c.id)}')">
+                👍 <span class="like-count">${c.likes || 0}</span>
+              </button>
+            </div>
+          </div>`;
+      }).join('');
+
+  const isFlagged = flaggedPosts.has(post.id);
+  const bkLabel   = isBookmarked(post.id) ? '🔖 Saved' : '🏷️ Save';
+
+  // Feature 11: admin pin; Feature 12: flag count for admin
+  const adminBtns = adminMode
+    ? `<button class="admin-delete-detail-btn" onclick="deletePost(event,'${esc(post.id)}')">🗑️ Delete</button>
+       <button class="admin-pin-btn admin-pin-detail" onclick="pinPost(event,'${esc(post.id)}')">${post.pinned ? '📌 Unpin' : '📌 Pin'}</button>
+       ${post.flags > 0 ? `<span class="flag-count-badge">🚩 ${post.flags} report${post.flags !== 1 ? 's' : ''}</span>` : ''}`
+    : '';
 
   area.innerHTML = `
     <div class="post-detail">
@@ -327,12 +587,20 @@ function renderPostDetail(post) {
         <span class="post-detail-time">${timeAgo(post.createdAt)}</span>
       </div>
       <h1 class="post-detail-title">${esc(post.title)}</h1>
+      <div class="post-detail-stats">
+        <span>👁 ${post.views || 0} views</span>
+        <span>📖 ${readingTime(post.content)}</span>
+        ${post.pinned ? '<span>📌 Pinned</span>' : ''}
+      </div>
+      ${post.imageUrl ? `<div class="post-detail-image"><img src="${esc(post.imageUrl)}" alt="Post image" /></div>` : ''}
       <div class="post-detail-body">${esc(post.content)}</div>
 
       <div class="post-detail-reactions">
         ${reactBtns}
-        <button class="share-btn" onclick="sharePost('${esc(post.id)}')">🔗 Share</button>
-        ${adminMode ? `<button class="admin-delete-detail-btn" onclick="deletePost(event,'${esc(post.id)}')">🗑️ Delete post</button>` : ''}
+        <button class="share-btn" onclick="sharePost('${esc(post.id)}','${esc(post.title)}')">🔗 Share</button>
+        <button class="bookmark-detail-btn${isBookmarked(post.id) ? ' bookmarked' : ''}" onclick="toggleBookmark(event,'${esc(post.id)}')">${bkLabel}</button>
+        <button class="flag-btn${isFlagged ? ' flagged' : ''}" onclick="flagPost(event,'${esc(post.id)}')" title="Report post">${isFlagged ? '🚩 Reported' : '🚩'}</button>
+        ${adminBtns}
       </div>
 
       <div class="comments-section">
@@ -341,7 +609,10 @@ function renderPostDetail(post) {
         <form class="comment-form" onsubmit="submitComment(event,'${esc(post.id)}')">
           <div class="comment-form-row">
             <input type="text" name="nickname" placeholder="Nickname (optional)" maxlength="30" autocomplete="off" />
-            <textarea name="content" placeholder="Add your two cents..." maxlength="1000" required rows="2"></textarea>
+            <div class="comment-textarea-wrap">
+              <textarea name="content" placeholder="Add your two cents..." maxlength="1000" required rows="2" oninput="updateCommentCount(this)"></textarea>
+              <span class="comment-char-count" id="comment-char-count">0 / 1000</span>
+            </div>
           </div>
           <button type="submit" class="comment-submit">Reply ✉️</button>
         </form>
@@ -349,12 +620,18 @@ function renderPostDetail(post) {
     </div>`;
 }
 
+// Feature 9: live comment char countdown
+function updateCommentCount(el) {
+  const count = document.getElementById('comment-char-count');
+  if (count) count.textContent = `${el.value.length} / 1000`;
+}
+
 // ─── React in detail view ─────────────────────────────────────────────────────
 async function reactDetail(postId, emoji) {
-  const was = hasReacted(postId, emoji);
+  const was   = hasReacted(postId, emoji);
   setReacted(postId, emoji, !was);
   const btnId = `rbl-${postId}-${emoji.codePointAt(0)}`;
-  const btn = document.getElementById(btnId);
+  const btn   = document.getElementById(btnId);
   try {
     const { reactions } = await api('POST', `/api/posts/${postId}/react`, { emoji, delta: was ? -1 : 1 });
     if (btn) {
@@ -367,12 +644,21 @@ async function reactDetail(postId, emoji) {
   }
 }
 
-// ─── Share ────────────────────────────────────────────────────────────────────
-function sharePost(id) {
-  const url = `${location.origin}${location.pathname}#post=${id}`;
+// ─── Share (Feature 15: enhanced with post title) ─────────────────────────────
+function sharePost(id, title = '') {
+  const url   = `${location.origin}${location.pathname}#post=${id}`;
+  const label = title
+    ? `"${title.slice(0, 40)}${title.length > 40 ? '…' : ''}"`
+    : 'post';
   navigator.clipboard.writeText(url)
-    .then(() => toast('Link copied! ✔'))
+    .then(() => toast(`Link copied for ${label} ✔`))
     .catch(() => toast('Copy this: ' + url));
+}
+
+// ─── Random post (Feature 6) ──────────────────────────────────────────────────
+function openRandomPost() {
+  if (state.posts.length === 0) { toast('No posts yet!', 'error'); return; }
+  openPost(state.posts[Math.floor(Math.random() * state.posts.length)].id);
 }
 
 // ─── New Post Form ────────────────────────────────────────────────────────────
@@ -389,16 +675,37 @@ document.getElementById('new-post-form').addEventListener('submit', async functi
   const tags     = tagsRaw.split(',').map(t => t.trim()).filter(Boolean);
 
   try {
-    await api('POST', '/api/posts', { title, content, category, tags });
+    // Upload image first if one was selected
+    let imageId = null;
+    if (pendingImageFile) {
+      btn.textContent = 'Uploading image...';
+      try {
+        const { url: uploadUrl } = await api('POST', '/api/upload-url', {});
+        const uploadRes = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': pendingImageFile.type },
+          body: pendingImageFile,
+        });
+        if (!uploadRes.ok) throw new Error('Upload failed');
+        const result = await uploadRes.json();
+        imageId = result.storageId;
+      } catch (imgErr) {
+        toast('Image upload failed — posting without image', 'error');
+      }
+      btn.textContent = 'Spilling...';
+    }
+
+    await api('POST', '/api/posts', { title, content, category, tags, imageId });
     closeAllModals();
     this.reset();
-    document.getElementById('title-count').textContent = '0 / 150';
+    removeImage();
+    document.getElementById('title-count').textContent   = '0 / 150';
     document.getElementById('content-count').textContent = '0 / 5000';
     toast('Tea has been spilled! ☕🔥');
     state.filter = { category: 'all', sort: 'new', search: '' };
     document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === 'new'));
-    document.querySelectorAll('.cat-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === 'all'));
     document.getElementById('search').value = '';
+    await loadCategories();
     await loadPosts();
   } catch (err) {
     toast(err.message, 'error');
@@ -421,24 +728,36 @@ async function submitComment(e, postId) {
 
   try {
     const comment = await api('POST', `/api/posts/${postId}/comments`, { content, nickname });
-    const list = document.getElementById(`comment-list-${postId}`);
-    const noMsg = list.querySelector('.no-comments');
+    const list    = document.getElementById(`comment-list-${postId}`);
+    const noMsg   = list.querySelector('.no-comments');
     if (noMsg) noMsg.remove();
 
-    const div = document.createElement('div');
+    const color = avatarColor(comment.nickname);
+    const div   = document.createElement('div');
     div.className = 'comment-item new-comment';
     div.innerHTML = `
-      <div class="comment-nick">~ ${esc(comment.nickname)}</div>
+      <div class="comment-nick">
+        <span class="comment-avatar" style="background:${color}"></span>
+        ~ ${esc(comment.nickname)}
+      </div>
       <div class="comment-body">${esc(comment.content)}</div>
-      <div class="comment-time">just now</div>`;
+      <div class="comment-footer">
+        <span class="comment-time">just now</span>
+        <button class="comment-like-btn" onclick="likeComment(event,'${esc(comment.id)}')">
+          👍 <span class="like-count">0</span>
+        </button>
+      </div>`;
     list.appendChild(div);
     div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     form.reset();
 
-    const title = document.getElementById(`comments-title-${postId}`);
-    if (title) {
+    const ccount = document.getElementById('comment-char-count');
+    if (ccount) ccount.textContent = '0 / 1000';
+
+    const titleEl = document.getElementById(`comments-title-${postId}`);
+    if (titleEl) {
       const n = list.querySelectorAll('.comment-item').length;
-      title.textContent = `💬 ${n} Comment${n !== 1 ? 's' : ''}`;
+      titleEl.textContent = `💬 ${n} Comment${n !== 1 ? 's' : ''}`;
     }
   } catch (err) {
     toast(err.message, 'error');
@@ -475,10 +794,19 @@ document.getElementById('close-new-post').addEventListener('click', closeAllModa
 document.getElementById('close-post').addEventListener('click', closeAllModals);
 document.getElementById('empty-spill').addEventListener('click', () => openModal('new-post-modal'));
 document.getElementById('backdrop').addEventListener('click', closeAllModals);
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAllModals(); });
+
+// ─── Keyboard shortcuts (Features 5 + existing) ───────────────────────────────
 document.addEventListener('keydown', e => {
-  if (e.key === 'n' && !openModalId && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-    openModal('new-post-modal');
+  if (e.key === 'Escape') { closeAllModals(); return; }
+  const active  = document.activeElement;
+  const inInput = active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable;
+  if (inInput) return;
+  if (e.key === 'n' && !openModalId) { openModal('new-post-modal'); return; }
+  if (e.key === '/') { e.preventDefault(); document.getElementById('search').focus(); return; }
+  if (e.key === 'r' || e.key === 'R') { openRandomPost(); return; }
+  if (e.key === 'b' || e.key === 'B') {
+    setCategory(state.filter.category === '__bookmarks__' ? 'all' : '__bookmarks__');
+    return;
   }
 });
 
@@ -493,6 +821,17 @@ setInterval(loadPosts, 30000);
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 (async function init() {
+  // Feature 4: restore filter state from URL params
+  const params = new URLSearchParams(location.search);
+  if (params.has('cat'))  state.filter.category = params.get('cat');
+  if (params.has('sort')) state.filter.sort      = params.get('sort');
+  if (params.has('q'))    { state.filter.search  = params.get('q'); document.getElementById('search').value = params.get('q'); }
+
+  // Sync sort buttons to restored state
+  document.querySelectorAll('.sort-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.sort === state.filter.sort)
+  );
+
   await Promise.all([loadCategories(), loadPosts()]);
   await checkHash();
 })();

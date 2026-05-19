@@ -14,11 +14,16 @@ export default defineSchema({
       skull:  v.number(),
       eyes:   v.number(),
     }),
+    views:   v.optional(v.number()),
+    pinned:  v.optional(v.boolean()),
+    flags:   v.optional(v.number()),
+    imageId: v.optional(v.id("_storage")),
   }),
 
   comments: defineTable({
     postId:   v.id("posts"),
     content:  v.string(),
     nickname: v.string(),
+    likes:    v.optional(v.number()),
   }).index("by_post", ["postId"]),
 });

@@ -23,16 +23,20 @@ const DEFAULT_REACTIONS = { fire: 0, scream: 0, coffee: 0, skull: 0, eyes: 0 };
 
 // Normalize a Convex doc — reactions use ASCII keys (fire/scream/coffee/skull/eyes)
 // The Node.js layer in storage.js converts them back to emoji for the frontend.
-function normalize(post: Doc<"posts">, commentCount = 0) {
+function normalize(post: Doc<"posts">, commentCount = 0, imageUrl: string | null = null) {
   return {
-    id:        post._id,
-    title:     post.title,
-    content:   post.content,
-    category:  post.category,
-    tags:      post.tags,
-    reactions: post.reactions,
-    createdAt: new Date(post._creationTime).toISOString(),
+    id:           post._id,
+    title:        post.title,
+    content:      post.content,
+    category:     post.category,
+    tags:         post.tags,
+    reactions:    post.reactions,
+    createdAt:    new Date(post._creationTime).toISOString(),
     commentCount,
+    views:        post.views  ?? 0,
+    pinned:       post.pinned ?? false,
+    flags:        post.flags  ?? 0,
+    imageUrl,
   };
 }
 
@@ -66,9 +70,10 @@ export const list = query({
       );
     }
 
-    let results = posts.map(p =>
-      normalize(p, commentCounts.get(p._id.toString()) || 0)
-    );
+    let results = await Promise.all(posts.map(async p => {
+      const imageUrl = p.imageId ? await ctx.storage.getUrl(p.imageId) : null;
+      return normalize(p, commentCounts.get(p._id.toString()) || 0, imageUrl);
+    }));
 
     if (args.sort === "hot") {
       const score = (p: ReturnType<typeof normalize>) =>
@@ -77,6 +82,12 @@ export const list = query({
     } else {
       results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
+
+    // Pinned posts always float to the top
+    results = [
+      ...results.filter(p => p.pinned),
+      ...results.filter(p => !p.pinned),
+    ];
 
     return results;
   },
@@ -102,10 +113,12 @@ export const get = query({
         content:   c.content,
         nickname:  c.nickname,
         createdAt: new Date(c._creationTime).toISOString(),
+        likes:     c.likes ?? 0,
       }));
 
+    const imageUrl = post.imageId ? await ctx.storage.getUrl(post.imageId) : null;
     return {
-      ...normalize(post, normalizedComments.length),
+      ...normalize(post, normalizedComments.length, imageUrl),
       comments: normalizedComments,
     };
   },
@@ -118,6 +131,7 @@ export const create = mutation({
     content:  v.string(),
     category: v.string(),
     tags:     v.array(v.string()),
+    imageId:  v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
     const id = await ctx.db.insert("posts", {
@@ -126,9 +140,11 @@ export const create = mutation({
       category: CATEGORY_IDS.has(args.category) ? args.category : "general",
       tags:     args.tags.map(t => t.trim().slice(0, 30)).slice(0, 5),
       reactions: { ...DEFAULT_REACTIONS },
+      imageId:  args.imageId,
     });
     const post = (await ctx.db.get(id))!;
-    return { ...normalize(post), commentCount: 0 };
+    const imageUrl = post.imageId ? await ctx.storage.getUrl(post.imageId) : null;
+    return { ...normalize(post, 0, imageUrl), commentCount: 0 };
   },
 });
 
@@ -161,6 +177,7 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     const post = await ctx.db.get(args.id);
     if (!post) throw new Error("Post not found");
+    if (post.imageId) await ctx.storage.delete(post.imageId);
     const comments = await ctx.db
       .query("comments")
       .withIndex("by_post", q => q.eq("postId", args.id))
@@ -168,6 +185,50 @@ export const remove = mutation({
     for (const c of comments) await ctx.db.delete(c._id);
     await ctx.db.delete(args.id);
     return { ok: true };
+  },
+});
+
+// POST /api/upload-url  — returns a Convex storage upload URL
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+// POST /api/posts/:id/view
+export const incrementView = mutation({
+  args: { id: v.id("posts") },
+  handler: async (ctx, args) => {
+    const post = await ctx.db.get(args.id);
+    if (!post) throw new Error("Post not found");
+    const views = (post.views ?? 0) + 1;
+    await ctx.db.patch(args.id, { views });
+    return { views };
+  },
+});
+
+// POST /api/posts/:id/pin  (admin)
+export const pin = mutation({
+  args: { id: v.id("posts") },
+  handler: async (ctx, args) => {
+    const post = await ctx.db.get(args.id);
+    if (!post) throw new Error("Post not found");
+    const pinned = !(post.pinned ?? false);
+    await ctx.db.patch(args.id, { pinned });
+    return { pinned };
+  },
+});
+
+// POST /api/posts/:id/flag
+export const flag = mutation({
+  args: { id: v.id("posts") },
+  handler: async (ctx, args) => {
+    const post = await ctx.db.get(args.id);
+    if (!post) throw new Error("Post not found");
+    const flags = (post.flags ?? 0) + 1;
+    await ctx.db.patch(args.id, { flags });
+    return { flags };
   },
 });
 
