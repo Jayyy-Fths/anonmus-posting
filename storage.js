@@ -37,7 +37,7 @@ async function convexMutation(funcPath, args = {}) {
 
 const DATA_DIR = path.join(__dirname, 'data');
 const DB_PATH  = path.join(DATA_DIR, 'db.json');
-fs.mkdirSync(DATA_DIR, { recursive: true });
+if (!CONVEX_URL) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 function readDB() {
   try {
