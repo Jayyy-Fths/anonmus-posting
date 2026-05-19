@@ -11,6 +11,8 @@ const VALID_EMOJIS = new Set(['🔥', '😱', '☕', '💀', '👀']);
 const CATEGORY_IDS = new Set(['general', 'school', 'drama', 'relationships', 'work', 'social', 'online']);
 
 // ─── Rate limiting ────────────────────────────────────────────────────────────
+// Upstash Redis when UPSTASH_REDIS_REST_URL is set (Vercel / serverless).
+// Falls back to an in-memory Map for local dev.
 const rateLimits = new Map();
 setInterval(() => {
   const cutoff = Date.now() - 60000;
@@ -19,7 +21,26 @@ setInterval(() => {
   }
 }, 300000);
 
-function checkRate(ip, action, max) {
+let _redis = null;
+function getRedis() {
+  if (!_redis) {
+    const { Redis } = require('@upstash/redis');
+    _redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+  }
+  return _redis;
+}
+
+async function checkRate(ip, action, max) {
+  if (process.env.UPSTASH_REDIS_REST_URL) {
+    const redis = getRedis();
+    const key = `rl:${ip}:${action}`;
+    const count = await redis.incr(key);
+    if (count === 1) await redis.expire(key, 60);
+    return count <= max;
+  }
   const key = `${ip}|${action}`;
   const now = Date.now();
   const entry = rateLimits.get(key);
@@ -47,7 +68,7 @@ app.get('/api/posts', async (req, res) => {
 });
 
 app.post('/api/posts', async (req, res) => {
-  if (!checkRate(req.ip, 'post', 5))
+  if (!await checkRate(req.ip, 'post', 5))
     return res.status(429).json({ error: 'Slow down — max 5 posts per minute' });
 
   const { title, content, category, tags } = req.body;
@@ -82,7 +103,7 @@ app.get('/api/posts/:id', async (req, res) => {
 });
 
 app.post('/api/posts/:id/react', async (req, res) => {
-  if (!checkRate(req.ip, 'react', 60))
+  if (!await checkRate(req.ip, 'react', 60))
     return res.status(429).json({ error: 'Too many reactions' });
 
   const { emoji, delta } = req.body;
@@ -99,7 +120,7 @@ app.post('/api/posts/:id/react', async (req, res) => {
 });
 
 app.post('/api/posts/:id/comments', async (req, res) => {
-  if (!checkRate(req.ip, 'comment', 10))
+  if (!await checkRate(req.ip, 'comment', 10))
     return res.status(429).json({ error: 'Slow down — max 10 comments per minute' });
 
   const { content, nickname } = req.body;

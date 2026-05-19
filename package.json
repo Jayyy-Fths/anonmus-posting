@@ -9,6 +9,7 @@
     "convex": "convex dev"
   },
   "dependencies": {
+    "@upstash/redis": "^1.38.0",
     "convex": "^1.39.1",
     "dotenv": "^17.4.2",
     "express": "^4.18.2"
