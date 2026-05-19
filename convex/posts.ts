@@ -155,6 +155,22 @@ export const react = mutation({
   },
 });
 
+// DELETE /api/posts/:id
+export const remove = mutation({
+  args: { id: v.id("posts") },
+  handler: async (ctx, args) => {
+    const post = await ctx.db.get(args.id);
+    if (!post) throw new Error("Post not found");
+    const comments = await ctx.db
+      .query("comments")
+      .withIndex("by_post", q => q.eq("postId", args.id))
+      .collect();
+    for (const c of comments) await ctx.db.delete(c._id);
+    await ctx.db.delete(args.id);
+    return { ok: true };
+  },
+});
+
 // GET /api/categories
 export const categories = query({
   args: {},

@@ -6,6 +6,52 @@ const state = {
   filter: { category: 'all', sort: 'new', search: '' },
 };
 
+// ─── Admin mode ───────────────────────────────────────────────────────────────
+let adminMode = sessionStorage.getItem('anontea_admin') === '1';
+
+function toggleAdminMode() {
+  if (adminMode) {
+    adminMode = false;
+    sessionStorage.removeItem('anontea_admin');
+    sessionStorage.removeItem('anontea_admin_secret');
+    document.getElementById('admin-toggle').classList.remove('active');
+    toast('Admin mode off');
+    loadPosts();
+    return;
+  }
+  const secret = prompt('Admin password:');
+  if (!secret) return;
+  sessionStorage.setItem('anontea_admin_secret', secret);
+  sessionStorage.setItem('anontea_admin', '1');
+  adminMode = true;
+  document.getElementById('admin-toggle').classList.add('active');
+  toast('Admin mode on — trash buttons visible');
+  loadPosts();
+}
+
+async function deletePost(e, postId) {
+  e.stopPropagation();
+  if (!confirm('Delete this post permanently? This cannot be undone.')) return;
+  const secret = sessionStorage.getItem('anontea_admin_secret') || '';
+  try {
+    const res = await fetch(`/api/posts/${postId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${secret}` },
+    });
+    if (res.status === 401) { toast('Wrong admin password', 'error'); return; }
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast(d.error || 'Delete failed', 'error');
+      return;
+    }
+    toast('Post deleted.');
+    closeAllModals();
+    await loadPosts();
+  } catch (err) {
+    toast('Delete failed: ' + err.message, 'error');
+  }
+}
+
 // ─── Local reaction tracking ──────────────────────────────────────────────────
 const reacted = JSON.parse(localStorage.getItem('anontea_reactions') || '{}');
 function saveReacted() { localStorage.setItem('anontea_reactions', JSON.stringify(reacted)); }
@@ -110,6 +156,12 @@ function renderCard(post) {
   const newBadge = isNew(post.createdAt)
     ? `<span class="post-card-new-badge">NEW</span>` : '';
 
+  const adminDelete = adminMode
+    ? `<div class="admin-actions" onclick="event.stopPropagation()">
+        <button class="admin-delete-btn" onclick="deletePost(event,'${esc(post.id)}')">🗑️ Delete post</button>
+       </div>`
+    : '';
+
   return `
     <article class="post-card" onclick="openPost('${esc(post.id)}')">
       ${newBadge}
@@ -126,6 +178,7 @@ function renderCard(post) {
           <span>${timeAgo(post.createdAt)}</span>
         </div>
       </div>
+      ${adminDelete}
     </article>`;
 }
 
@@ -279,6 +332,7 @@ function renderPostDetail(post) {
       <div class="post-detail-reactions">
         ${reactBtns}
         <button class="share-btn" onclick="sharePost('${esc(post.id)}')">🔗 Share</button>
+        ${adminMode ? `<button class="admin-delete-detail-btn" onclick="deletePost(event,'${esc(post.id)}')">🗑️ Delete post</button>` : ''}
       </div>
 
       <div class="comments-section">

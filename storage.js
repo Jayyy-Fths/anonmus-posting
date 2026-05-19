@@ -196,6 +196,20 @@ module.exports = {
     return comment;
   },
 
+  async deletePost(id) {
+    if (CONVEX_URL) {
+      return convexMutation('posts:remove', { id });
+    }
+
+    const db = readDB();
+    const idx = db.posts.findIndex(p => p.id === id);
+    if (idx === -1) return null;
+    db.posts.splice(idx, 1);
+    db.comments = db.comments.filter(c => c.postId !== id);
+    writeDB(db);
+    return { ok: true };
+  },
+
   async getCategories() {
     if (CONVEX_URL) {
       return convexQuery('posts:categories', {});

@@ -139,6 +139,20 @@ app.post('/api/posts/:id/comments', async (req, res) => {
   }
 });
 
+app.delete('/api/posts/:id', async (req, res) => {
+  const auth = req.headers.authorization;
+  if (!process.env.ADMIN_SECRET || auth !== `Bearer ${process.env.ADMIN_SECRET}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const result = await storage.deletePost(req.params.id);
+    if (!result) return res.status(404).json({ error: 'Not found' });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/categories', async (req, res) => {
   try {
     res.json(await storage.getCategories());
