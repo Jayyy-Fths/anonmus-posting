@@ -228,7 +228,7 @@ export const flag = mutation({
     if (!post) throw new Error("Post not found");
     const flags = (post.flags ?? 0) + 1;
     await ctx.db.patch(args.id, { flags });
-    return { flags };
+    return { flags, title: post.title };
   },
 });
 

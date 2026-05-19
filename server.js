@@ -1,8 +1,49 @@
 'use strict';
 require('dotenv').config();
-const express = require('express');
-const path    = require('path');
-const storage = require('./storage');
+const express    = require('express');
+const path       = require('path');
+const nodemailer = require('nodemailer');
+const storage    = require('./storage');
+
+// ─── Email alert ──────────────────────────────────────────────────────────────
+let _mailer = null;
+function getMailer() {
+  if (!_mailer) {
+    _mailer = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+  }
+  return _mailer;
+}
+
+async function sendEmailAlert(postTitle, postId) {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
+  const to = process.env.ALERT_EMAIL || process.env.EMAIL_USER;
+  try {
+    await getMailer().sendMail({
+      from: `"ANON.TEA" <${process.env.EMAIL_USER}>`,
+      to,
+      subject: `🚩 Report on ANON.TEA: "${postTitle}"`,
+      html: `
+        <div style="font-family:sans-serif;max-width:480px">
+          <h2 style="color:#ff2d78">🚩 Post Reported</h2>
+          <p>Someone flagged a post on <strong>ANON.TEA</strong>.</p>
+          <table style="border-collapse:collapse;width:100%">
+            <tr><td style="padding:6px 0;color:#888">Post title</td><td style="padding:6px 0"><strong>${postTitle}</strong></td></tr>
+            <tr><td style="padding:6px 0;color:#888">Post ID</td><td style="padding:6px 0;font-family:monospace;font-size:12px">${postId}</td></tr>
+          </table>
+          <p style="margin-top:20px;color:#888;font-size:12px">Log in as admin and delete it if it violates your rules.</p>
+        </div>`,
+    });
+    console.log(`[ANON.TEA] Report email sent for post: "${postTitle}"`);
+  } catch (err) {
+    console.error('[ANON.TEA] Email alert failed:', err.message);
+  }
+}
 
 const app  = express();
 const PORT = process.env.PORT || 4000;
@@ -194,6 +235,8 @@ app.post('/api/posts/:id/flag', async (req, res) => {
   try {
     const result = await storage.flagPost(req.params.id);
     if (!result) return res.status(404).json({ error: 'Not found' });
+    // Fire-and-forget email — don't let a mail failure block the response
+    sendEmailAlert(result.title || 'Unknown post', req.params.id);
     res.json(result);
   } catch (e) {
     res.status(500).json({ error: e.message });

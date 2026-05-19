@@ -12,6 +12,7 @@
     "@upstash/redis": "^1.38.0",
     "convex": "^1.39.1",
     "dotenv": "^17.4.2",
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "nodemailer": "^8.0.7"
   }
 }

@@ -32,7 +32,11 @@
       "Bash(node_modules\\\\.bin\\\\tsc --noEmit)",
       "Bash(node \"node_modules/typescript/bin/tsc\" --noEmit)",
       "Bash(Get-ChildItem -Force)",
-      "Bash(Select-Object Name, PSIsContainer)"
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Bash(node test-email.js)",
+      "Bash(del \"c:\\\\Users\\\\myalo\\\\OneDrive\\\\Vscode\\\\anonmus posting\\\\test-email.js\")",
+      "Bash(node -e ' *)",
+      "Bash(node seed.js)"
     ]
   }
 }

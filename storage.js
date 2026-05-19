@@ -256,7 +256,7 @@ module.exports = {
     if (!post) return null;
     post.flags = (post.flags || 0) + 1;
     writeDB(db);
-    return { flags: post.flags };
+    return { flags: post.flags, title: post.title };
   },
 
   async likeComment(id) {
