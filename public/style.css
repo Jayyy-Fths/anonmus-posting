@@ -927,6 +927,85 @@ header {
   .controls { padding: 10px 14px 8px; }
 }
 
+/* === SEARCH HIGHLIGHT === */
+mark {
+  background: rgba(255, 45, 120, 0.22);
+  color: var(--accent);
+  border-radius: 3px;
+  padding: 0 2px;
+  font-style: normal;
+}
+
+/* === TEA LEVEL BAR === */
+.tea-level-track {
+  height: 3px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+.tea-level-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 3px;
+  transition: width 0.5s ease;
+  min-width: 3px;
+}
+
+/* === READING PROGRESS === */
+#reading-progress {
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  width: 0%;
+  transition: width 0.12s linear;
+  border-radius: 0 3px 3px 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* === FLOATING REACTION === */
+.reaction-float {
+  position: fixed;
+  pointer-events: none;
+  font-size: 26px;
+  z-index: 9998;
+  transform: translateX(-50%);
+  animation: rfloat 0.8s ease-out forwards;
+}
+@keyframes rfloat {
+  0%   { opacity: 1; transform: translateX(-50%) translateY(0)    scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-70px) scale(1.5); }
+}
+
+/* === BACK TO TOP === */
+#back-to-top {
+  position: fixed;
+  bottom: 76px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 50%;
+  font-size: 18px;
+  color: var(--text2);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s, border-color 0.2s, color 0.2s;
+  z-index: 199;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+#back-to-top.visible { opacity: 1; pointer-events: auto; }
+#back-to-top:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-4px);
+}
+
 /* === ADMIN === */
 .admin-lock-btn {
   position: fixed;

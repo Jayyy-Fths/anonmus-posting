@@ -41,7 +41,8 @@
       "Bash(netstat -ano)",
       "Bash(findstr :4000)",
       "Bash(taskkill /PID 17792 /F)",
-      "PowerShell(Stop-Process -Id 17792 -Force)"
+      "PowerShell(Stop-Process -Id 17792 -Force)",
+      "Bash(node -e \"fetch\\('http://localhost:4000/api/posts?category=all'\\).then\\(r=>console.log\\('OK',r.status\\)\\).catch\\(e=>console.log\\('Fail',e.message\\)\\)\")"
     ]
   }
 }

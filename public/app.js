@@ -290,6 +290,15 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('post-category')?.addEventListener('change', saveDraft);
 
+  // Back to top (Feature 27)
+  const backTopBtn = document.getElementById('back-to-top');
+  if (backTopBtn) {
+    window.addEventListener('scroll', () => {
+      backTopBtn.classList.toggle('visible', window.scrollY > 300);
+    }, { passive: true });
+    backTopBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  }
+
   const area = document.getElementById('image-upload-area');
   if (area) {
     area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('drag-over'); });
@@ -405,6 +414,10 @@ function closeAllModals() {
   document.getElementById('backdrop').classList.add('hidden');
   document.body.style.overflow = '';
   openModalId = null;
+  const box = document.querySelector('#post-modal .modal-box');
+  if (_readScroll && box) { box.removeEventListener('scroll', _readScroll); _readScroll = null; }
+  const bar = document.getElementById('reading-progress');
+  if (bar) { bar.style.width = '0%'; }
 }
 
 // ─── Category labels ──────────────────────────────────────────────────────────
@@ -412,6 +425,48 @@ const CAT_LABEL = {
   general: '📣 General', school: '🏫 School', drama: '💔 Drama',
   relationships: '💑 Relationships', work: '💼 Work', social: '🎉 Social', online: '📱 Online',
 };
+
+// ─── Search highlight (Feature 23) ───────────────────────────────────────────
+function highlight(text, query) {
+  const escaped = esc(text);
+  if (!query || !query.trim()) return escaped;
+  const escapedQ = esc(query.trim()).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return escaped.replace(new RegExp(escapedQ, 'gi'), '<mark>$&</mark>');
+}
+
+// ─── Tea Level bar (Feature 24) ──────────────────────────────────────────────
+function teaScore(post) {
+  return Object.values(post.reactions).reduce((s, v) => s + v, 0) * 2 +
+         (post.commentCount || 0) * 3 +
+         (post.views || 0) * 0.05;
+}
+
+// ─── Reading progress (Feature 25) ───────────────────────────────────────────
+let _readScroll = null;
+function attachReadingProgress() {
+  const box = document.querySelector('#post-modal .modal-box');
+  const bar = document.getElementById('reading-progress');
+  if (!box || !bar) return;
+  if (_readScroll) box.removeEventListener('scroll', _readScroll);
+  bar.style.width = '0%';
+  _readScroll = () => {
+    const scrollable = box.scrollHeight - box.clientHeight;
+    const pct = scrollable > 0 ? (box.scrollTop / scrollable) * 100 : 100;
+    bar.style.width = Math.min(100, pct) + '%';
+  };
+  box.addEventListener('scroll', _readScroll, { passive: true });
+}
+
+// ─── Floating reaction emoji (Feature 26) ────────────────────────────────────
+function spawnReactionFloat(e, emoji) {
+  const el = document.createElement('span');
+  el.className = 'reaction-float';
+  el.textContent = emoji;
+  el.style.left = e.clientX + 'px';
+  el.style.top  = e.clientY + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 800);
+}
 
 // ─── Render: Post Card ────────────────────────────────────────────────────────
 function renderCard(post) {
@@ -430,6 +485,9 @@ function renderCard(post) {
   const pinnedBadge = post.pinned ? `<span class="post-card-pinned-label">📌 Pinned</span>` : '';
   const rt          = readingTime(post.content);
   const bkIcon      = isBookmarked(post.id) ? '🔖' : '🏷️';
+  const q           = state.filter.search;
+  const maxScore    = Math.max(1, ...state.posts.map(teaScore));
+  const barPct      = Math.round((teaScore(post) / maxScore) * 100);
 
   const imageHtml = post.imageUrl
     ? `<div class="post-card-image"><img src="${esc(post.imageUrl)}" alt="" loading="lazy" /></div>`
@@ -451,8 +509,8 @@ function renderCard(post) {
         ${pinnedBadge}
         ${tags}
       </div>
-      <div class="post-card-title">${esc(post.title)}</div>
-      <div class="post-card-snippet">${esc(post.content)}</div>
+      <div class="post-card-title">${highlight(post.title, q)}</div>
+      <div class="post-card-snippet">${highlight(post.content, q)}</div>
       <div class="post-card-footer">
         <div class="post-reactions">${pills}</div>
         <div class="post-meta">
@@ -465,6 +523,7 @@ function renderCard(post) {
             title="${isBookmarked(post.id) ? 'Remove bookmark' : 'Bookmark'}">${bkIcon}</button>
         </div>
       </div>
+      <div class="tea-level-track" title="Engagement level"><div class="tea-level-fill" style="width:${barPct}%"></div></div>
       ${adminActions}
     </article>`;
 }
@@ -627,6 +686,7 @@ async function reactCard(e, postId, emoji) {
   e.stopPropagation();
   const was = hasReacted(postId, emoji);
   setReacted(postId, emoji, !was);
+  if (!was) spawnReactionFloat(e, emoji);
   try {
     await api('POST', `/api/posts/${postId}/react`, { emoji, delta: was ? -1 : 1 });
     await loadPosts();
@@ -765,6 +825,7 @@ function renderPostDetail(post) {
   const nickInput = area.querySelector('[name="nickname"]');
   if (nickInput) nickInput.value = getSavedNick();
   addRecentlyViewed(post.id, post.title);
+  attachReadingProgress();
 }
 
 // Feature 9: live comment char countdown
