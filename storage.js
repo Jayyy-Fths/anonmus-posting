@@ -1,5 +1,5 @@
 'use strict';
-require('dotenv').config();
+require('dotenv').config(); // storage layer
 
 const fs      = require('fs');
 const path    = require('path');
