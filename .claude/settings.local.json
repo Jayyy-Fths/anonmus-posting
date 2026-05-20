@@ -36,7 +36,12 @@
       "Bash(node test-email.js)",
       "Bash(del \"c:\\\\Users\\\\myalo\\\\OneDrive\\\\Vscode\\\\anonmus posting\\\\test-email.js\")",
       "Bash(node -e ' *)",
-      "Bash(node seed.js)"
+      "Bash(node seed.js)",
+      "Bash(node -e \"require\\('dotenv'\\).config\\(\\); console.log\\('CONVEX_URL:', process.env.CONVEX_URL ? 'set' : 'NOT SET'\\)\")",
+      "Bash(netstat -ano)",
+      "Bash(findstr :4000)",
+      "Bash(taskkill /PID 17792 /F)",
+      "PowerShell(Stop-Process -Id 17792 -Force)"
     ]
   }
 }
