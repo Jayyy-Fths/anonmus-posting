@@ -41,6 +41,119 @@ function hasLikedComment(id) { return likedComments.has(id); }
 const flaggedPosts = new Set(JSON.parse(localStorage.getItem('anontea_flagged') || '[]'));
 function saveFlagged() { localStorage.setItem('anontea_flagged', JSON.stringify([...flaggedPosts])); }
 
+// ─── Draft saving (Feature 17) ───────────────────────────────────────────────
+const DRAFT_KEY = 'anontea_draft';
+function saveDraft() {
+  const title   = document.getElementById('post-title').value;
+  const content = document.getElementById('post-content').value;
+  if (title || content) {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({
+      title,
+      content,
+      category: document.getElementById('post-category').value,
+      tags:     document.getElementById('post-tags').value,
+    }));
+  } else {
+    localStorage.removeItem(DRAFT_KEY);
+  }
+}
+function loadDraft() {
+  const raw = localStorage.getItem(DRAFT_KEY);
+  if (!raw) return;
+  try {
+    const d = JSON.parse(raw);
+    if (!d.title && !d.content) return;
+    document.getElementById('post-title').value    = d.title    || '';
+    document.getElementById('post-content').value  = d.content  || '';
+    document.getElementById('post-category').value = d.category || 'general';
+    document.getElementById('post-tags').value     = d.tags     || '';
+    document.getElementById('title-count').textContent   = `${(d.title   || '').length} / 150`;
+    document.getElementById('content-count').textContent = `${(d.content || '').length} / 5000`;
+    toast('Draft restored ✏️');
+  } catch {}
+}
+function clearDraft() { localStorage.removeItem(DRAFT_KEY); }
+
+// ─── Nickname memory (Feature 18) ────────────────────────────────────────────
+const NICK_KEY = 'anontea_nickname';
+function getSavedNick() { return localStorage.getItem(NICK_KEY) || ''; }
+function saveNick(name) { if (name) localStorage.setItem(NICK_KEY, name); }
+
+// ─── Nickname generator (Feature 19) ─────────────────────────────────────────
+const NICK_ADJ  = ['Mysterious','Silent','Brewing','Spilling','Sipping','Cozy','Shadowy','Secret','Whispering','Hidden','Fuzzy','Sneaky','Sleepy'];
+const NICK_NOUN = ['Teacup','Brewer','Spiller','Gossip','Kettle','Sipper','Ghost','Oracle','Oolong','Chai','Matcha','Boba','Leaf'];
+function generateNick() {
+  const a = NICK_ADJ [Math.floor(Math.random() * NICK_ADJ.length)];
+  const n = NICK_NOUN[Math.floor(Math.random() * NICK_NOUN.length)];
+  return `${a}${n}${Math.floor(Math.random() * 99) + 1}`;
+}
+function fillRandomNick() {
+  const input = document.querySelector('.comment-form [name="nickname"]');
+  if (input) { input.value = generateNick(); input.focus(); }
+}
+
+// ─── Recently viewed (Feature 20) ────────────────────────────────────────────
+const RECENT_KEY = 'anontea_recent';
+function addRecentlyViewed(id, title) {
+  const list = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]').filter(r => r.id !== id);
+  list.unshift({ id, title, time: Date.now() });
+  localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 5)));
+  renderRecentlyViewed();
+}
+function renderRecentlyViewed() {
+  const sec = document.getElementById('recent-section');
+  if (!sec) return;
+  const recent = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+  if (recent.length === 0) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  document.getElementById('recent-list').innerHTML = recent.map(r =>
+    `<div class="recent-item" onclick="openPost('${esc(r.id)}')">
+      <span class="recent-title">${esc(r.title)}</span>
+      <span class="recent-time">${timeAgo(r.time)}</span>
+    </div>`
+  ).join('');
+}
+
+// ─── Confetti (Feature 21) ────────────────────────────────────────────────────
+function spawnConfetti() {
+  const canvas = document.createElement('canvas');
+  Object.assign(canvas.style, { position:'fixed', top:'0', left:'0', width:'100%', height:'100%', pointerEvents:'none', zIndex:'9999' });
+  document.body.appendChild(canvas);
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const ctx  = canvas.getContext('2d');
+  const COLS = ['#ff2d78','#8b5cf6','#10d9a0','#f59e0b','#3b82f6','#ec4899'];
+  const pts  = Array.from({ length: 90 }, () => ({
+    x:     Math.random() * canvas.width,
+    y:     -(Math.random() * canvas.height * 0.5),
+    r:     Math.random() * 7 + 3,
+    color: COLS[Math.floor(Math.random() * COLS.length)],
+    vy:    Math.random() * 3 + 2,
+    vx:    (Math.random() - 0.5) * 2.5,
+    spin:  (Math.random() - 0.5) * 0.2,
+    angle: Math.random() * Math.PI * 2,
+  }));
+  let raf;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let alive = false;
+    pts.forEach(p => {
+      p.y += p.vy; p.x += p.vx; p.angle += p.spin;
+      if (p.y < canvas.height + 20) alive = true;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angle);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.r, -p.r * 0.5, p.r * 2, p.r);
+      ctx.restore();
+    });
+    if (alive) { raf = requestAnimationFrame(draw); }
+    else        { canvas.remove(); }
+  }
+  draw();
+  setTimeout(() => { cancelAnimationFrame(raf); canvas.remove(); }, 3500);
+}
+
 // ─── Admin mode ───────────────────────────────────────────────────────────────
 let adminMode = sessionStorage.getItem('anontea_admin') === '1';
 
@@ -170,6 +283,12 @@ function removeImage() {
 document.addEventListener('DOMContentLoaded', () => {
   const fileInput = document.getElementById('post-image');
   if (fileInput) fileInput.addEventListener('change', () => handleImageFile(fileInput.files[0]));
+
+  // Draft auto-save listeners
+  ['post-title', 'post-content', 'post-tags'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', saveDraft);
+  });
+  document.getElementById('post-category')?.addEventListener('change', saveDraft);
 
   const area = document.getElementById('image-upload-area');
   if (area) {
@@ -532,6 +651,27 @@ async function openPost(id) {
   }
 }
 
+// ─── Similar posts (Feature 22) ──────────────────────────────────────────────
+function renderSimilarPosts(post) {
+  const myTags = new Set(post.tags || []);
+  if (myTags.size === 0) return '';
+  const similar = state.posts
+    .filter(p => p.id !== post.id && (p.tags || []).some(t => myTags.has(t)))
+    .slice(0, 3);
+  if (similar.length === 0) return '';
+  return `
+    <div class="similar-posts">
+      <h4 class="similar-title">☕ Related Tea</h4>
+      <div class="similar-list">
+        ${similar.map(p => `
+          <div class="similar-card" onclick="openPost('${esc(p.id)}')">
+            <span class="similar-card-title">${esc(p.title)}</span>
+            <span class="similar-card-meta">${timeAgo(p.createdAt)} · 💬 ${p.commentCount}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
 // ─── Render Post Detail ───────────────────────────────────────────────────────
 function renderPostDetail(post) {
   const area = document.getElementById('post-content-area');
@@ -608,7 +748,10 @@ function renderPostDetail(post) {
         <div class="comment-list" id="comment-list-${esc(post.id)}">${commentsHtml}</div>
         <form class="comment-form" onsubmit="submitComment(event,'${esc(post.id)}')">
           <div class="comment-form-row">
-            <input type="text" name="nickname" placeholder="Nickname (optional)" maxlength="30" autocomplete="off" />
+            <div class="nick-row">
+              <input type="text" name="nickname" placeholder="Nickname (optional)" maxlength="30" autocomplete="off" />
+              <button type="button" class="nick-gen-btn" onclick="fillRandomNick()" title="Generate random nickname">🎲</button>
+            </div>
             <div class="comment-textarea-wrap">
               <textarea name="content" placeholder="Add your two cents..." maxlength="1000" required rows="2" oninput="updateCommentCount(this)"></textarea>
               <span class="comment-char-count" id="comment-char-count">0 / 1000</span>
@@ -617,7 +760,11 @@ function renderPostDetail(post) {
           <button type="submit" class="comment-submit">Reply ✉️</button>
         </form>
       </div>
+      ${renderSimilarPosts(post)}
     </div>`;
+  const nickInput = area.querySelector('[name="nickname"]');
+  if (nickInput) nickInput.value = getSavedNick();
+  addRecentlyViewed(post.id, post.title);
 }
 
 // Feature 9: live comment char countdown
@@ -702,6 +849,8 @@ document.getElementById('new-post-form').addEventListener('submit', async functi
     document.getElementById('title-count').textContent   = '0 / 150';
     document.getElementById('content-count').textContent = '0 / 5000';
     toast('Tea has been spilled! ☕🔥');
+    clearDraft();
+    spawnConfetti();
     state.filter = { category: 'all', sort: 'new', search: '' };
     document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === 'new'));
     document.getElementById('search').value = '';
@@ -724,7 +873,9 @@ async function submitComment(e, postId) {
   btn.textContent = 'Posting...';
 
   const content  = form.querySelector('[name="content"]').value;
-  const nickname = form.querySelector('[name="nickname"]').value || 'Anonymous';
+  const nickRaw  = form.querySelector('[name="nickname"]').value;
+  const nickname = nickRaw || 'Anonymous';
+  saveNick(nickRaw);
 
   try {
     const comment = await api('POST', `/api/posts/${postId}/comments`, { content, nickname });
@@ -789,7 +940,7 @@ document.querySelectorAll('.sort-btn').forEach(btn => {
 });
 
 // ─── Modal triggers ───────────────────────────────────────────────────────────
-document.getElementById('open-new-post').addEventListener('click', () => openModal('new-post-modal'));
+document.getElementById('open-new-post').addEventListener('click', () => { openModal('new-post-modal'); loadDraft(); });
 document.getElementById('close-new-post').addEventListener('click', closeAllModals);
 document.getElementById('close-post').addEventListener('click', closeAllModals);
 document.getElementById('empty-spill').addEventListener('click', () => openModal('new-post-modal'));
@@ -833,5 +984,6 @@ setInterval(loadPosts, 30000);
   );
 
   await Promise.all([loadCategories(), loadPosts()]);
+  renderRecentlyViewed();
   await checkHash();
 })();

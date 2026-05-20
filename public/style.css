@@ -290,6 +290,112 @@ header {
   color: var(--text3);
 }
 
+/* === RECENTLY VIEWED === */
+.recent-section {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.recent-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 7px 14px;
+  cursor: pointer;
+  max-width: 320px;
+  min-width: 0;
+  transition: border-color 0.2s, background 0.2s;
+}
+.recent-item:hover {
+  border-color: var(--accent2);
+  background: var(--card-hover);
+}
+.recent-title {
+  font-size: 13px;
+  font-weight: 600;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recent-time {
+  font-size: 11px;
+  color: var(--text3);
+  flex-shrink: 0;
+}
+
+/* === SIMILAR POSTS === */
+.similar-posts {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.similar-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.similar-list { display: flex; flex-direction: column; gap: 8px; }
+.similar-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.18s;
+}
+.similar-card:hover {
+  border-color: var(--border2);
+  background: var(--card-hover);
+  transform: translateX(4px);
+}
+.similar-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.similar-card-meta {
+  font-size: 12px;
+  color: var(--text3);
+  flex-shrink: 0;
+}
+
+/* === NICKNAME ROW === */
+.nick-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.nick-gen-btn {
+  flex-shrink: 0;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 7px 11px;
+  font-size: 15px;
+  color: var(--text);
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+}
+.nick-gen-btn:hover {
+  border-color: var(--accent2);
+  background: var(--card-hover);
+  transform: rotate(20deg);
+}
+
 /* === FEED === */
 .feed { padding: 22px 20px 60px; }
 .feed-inner { max-width: 1100px; margin: 0 auto; }
