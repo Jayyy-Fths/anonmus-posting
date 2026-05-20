@@ -18,6 +18,11 @@ function normalizeConvexPost(post) {
   return { ...post, reactions: toEmojiReactions(post.reactions) };
 }
 
+// UUID IDs come from the old local-JSON backend; Convex IDs never contain hyphens.
+// When CONVEX_URL is set but a UUID is passed, fall back to local JSON silently.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isConvexId = id => typeof id === 'string' && !UUID_RE.test(id);
+
 // ─── Convex HTTP helpers ──────────────────────────────────────────────────────
 // Used when CONVEX_URL is set in .env. Calls your deployed Convex functions.
 
@@ -133,7 +138,7 @@ module.exports = {
   },
 
   async getPost(id) {
-    if (CONVEX_URL) {
+    if (CONVEX_URL && isConvexId(id)) {
       const post = await convexQuery('posts:get', { id });
       return post ? normalizeConvexPost(post) : null;
     }
@@ -186,7 +191,7 @@ module.exports = {
   },
 
   async reactToPost(id, emoji, delta) {
-    if (CONVEX_URL) {
+    if (CONVEX_URL && isConvexId(id)) {
       const result = await convexMutation('posts:react', { id, emoji, delta });
       return { reactions: toEmojiReactions(result.reactions) };
     }
@@ -201,7 +206,7 @@ module.exports = {
   },
 
   async createComment(postId, { content, nickname }) {
-    if (CONVEX_URL) {
+    if (CONVEX_URL && isConvexId(postId)) {
       return convexMutation('comments:create', { postId, content, nickname });
     }
 
@@ -224,7 +229,7 @@ module.exports = {
   },
 
   async incrementView(id) {
-    if (CONVEX_URL) {
+    if (CONVEX_URL && isConvexId(id)) {
       return convexMutation('posts:incrementView', { id });
     }
     const db = readDB();
@@ -236,7 +241,7 @@ module.exports = {
   },
 
   async pinPost(id) {
-    if (CONVEX_URL) {
+    if (CONVEX_URL && isConvexId(id)) {
       return convexMutation('posts:pin', { id });
     }
     const db = readDB();
@@ -248,7 +253,7 @@ module.exports = {
   },
 
   async flagPost(id) {
-    if (CONVEX_URL) {
+    if (CONVEX_URL && isConvexId(id)) {
       return convexMutation('posts:flag', { id });
     }
     const db = readDB();
@@ -260,7 +265,7 @@ module.exports = {
   },
 
   async likeComment(id) {
-    if (CONVEX_URL) {
+    if (CONVEX_URL && isConvexId(id)) {
       return convexMutation('comments:like', { id });
     }
     const db = readDB();
@@ -272,7 +277,7 @@ module.exports = {
   },
 
   async deletePost(id) {
-    if (CONVEX_URL) {
+    if (CONVEX_URL && isConvexId(id)) {
       return convexMutation('posts:remove', { id });
     }
 
