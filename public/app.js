@@ -250,6 +250,13 @@ async function pinPost(e, postId) {
     if (res.status === 401) { toast('Wrong admin password', 'error'); return; }
     const { pinned } = await res.json();
     toast(pinned ? '📌 Post pinned to top' : 'Post unpinned');
+    // If the detail modal is open for this post, re-render it with the new pinned state
+    if (openPostId === postId) {
+      try {
+        const updated = await api('GET', `/api/posts/${postId}`);
+        renderPostDetail(updated);
+      } catch {}
+    }
     await loadPosts();
   } catch (err) {
     toast('Pin failed: ' + err.message, 'error');
@@ -436,6 +443,7 @@ function toast(msg, type = 'success') {
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
 let openModalId = null;
+let openPostId = null;
 
 function openModal(id) {
   closeAllModals();
@@ -452,6 +460,7 @@ function closeAllModals() {
   document.getElementById('backdrop').classList.add('hidden');
   document.body.style.overflow = '';
   openModalId = null;
+  openPostId = null;
   const box = document.querySelector('#post-modal .modal-box');
   if (_readScroll && box) { box.removeEventListener('scroll', _readScroll); _readScroll = null; }
   const bar = document.getElementById('reading-progress');
@@ -750,6 +759,7 @@ async function reactCard(e, postId, emoji) {
 // ─── Open Post Modal ──────────────────────────────────────────────────────────
 async function openPost(id) {
   openModal('post-modal');
+  openPostId = id;
   const area = document.getElementById('post-content-area');
   area.innerHTML = '<div class="loading" style="padding:80px 0"><div class="spinner"></div> Loading...</div>';
   // Feature 2: view counter (fire-and-forget)

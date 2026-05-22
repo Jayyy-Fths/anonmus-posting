@@ -67,7 +67,11 @@
       "Bash(curl -s -w \"\\\\nHTTP %{http_code}\" -X DELETE \"http://localhost:4000/api/posts/test123\" -H \"Authorization: Bearer taylorispretty\")",
       "Bash(pkill -f \"node.*server.js\")",
       "Bash(curl -s -w \"\\\\nHTTP %{http_code}\" http://localhost:4000/api/admin/verify -H \"Authorization: Bearer taylorispretty\")",
-      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\" http://localhost:4000/api/admin/verify -H \"Authorization: Bearer wrongpassword\")"
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\" http://localhost:4000/api/admin/verify -H \"Authorization: Bearer wrongpassword\")",
+      "Bash(curl -s \"http://localhost:4000/api/posts?category=all&sort=new\")",
+      "Bash(python3 -c \"import json,sys; posts=json.load\\(sys.stdin\\); print\\(posts[0]['id'], 'pinned=', posts[0]['pinned']\\)\")",
+      "Bash(curl -s -X POST http://localhost:4000/api/posts/j97e0c50pyrpnr31zgjvpe6wr18704vd/pin -H 'Authorization: Bearer taylorispretty' -H 'Content-Type: application/json')",
+      "Bash(python3 -c ' *)"
     ]
   }
 }
