@@ -191,6 +191,14 @@ app.post('/api/posts/:id/comments', async (req, res) => {
   }
 });
 
+app.get('/api/admin/verify', (req, res) => {
+  const auth = req.headers.authorization;
+  if (!process.env.ADMIN_SECRET || auth !== `Bearer ${process.env.ADMIN_SECRET}`) {
+    return res.status(401).json({ ok: false });
+  }
+  res.json({ ok: true });
+});
+
 app.delete('/api/posts/:id', async (req, res) => {
   const auth = req.headers.authorization;
   if (!process.env.ADMIN_SECRET || auth !== `Bearer ${process.env.ADMIN_SECRET}`) {

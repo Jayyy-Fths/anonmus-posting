@@ -181,16 +181,22 @@ function toggleAdminMode() {
   const btn = document.createElement('button');
   btn.textContent = 'Enter';
   btn.style.cssText = 'background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;padding:8px 14px;border-radius:999px;font-family:var(--font);font-weight:700;font-size:13px;cursor:pointer';
-  const submit = () => {
+  const submit = async () => {
     const secret = inp.value.trim();
     wrap.remove();
     if (!secret) return;
-    sessionStorage.setItem('anontea_admin_secret', secret);
-    sessionStorage.setItem('anontea_admin', '1');
-    adminMode = true;
-    document.getElementById('admin-toggle').classList.add('active');
-    toast('Admin mode on — trash buttons visible');
-    loadPosts();
+    try {
+      const res = await fetch('/api/admin/verify', {
+        headers: { 'Authorization': `Bearer ${secret}` },
+      });
+      if (res.status === 401) { toast('Wrong admin password ❌', 'error'); return; }
+      sessionStorage.setItem('anontea_admin_secret', secret);
+      sessionStorage.setItem('anontea_admin', '1');
+      adminMode = true;
+      document.getElementById('admin-toggle').classList.add('active');
+      toast('Admin mode on — trash buttons visible 🔑');
+      loadPosts();
+    } catch { toast('Could not verify password', 'error'); }
   };
   btn.addEventListener('click', submit);
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') wrap.remove(); });
