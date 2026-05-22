@@ -46,7 +46,19 @@
       "Bash(node -e \"fetch\\('http://localhost:4000/api/posts?category=all'\\).then\\(r=>console.log\\('Server OK',r.status\\)\\).catch\\(e=>console.log\\('Not up yet:',e.message\\)\\)\")",
       "Bash(grep -rn 'format\\\\|json\\\\|$id' /workspaces/anonmus-posting/storage.js)",
       "Bash(grep -n 'convexToJson\\\\|$id\\\\|Id\\\\|isId' /workspaces/anonmus-posting/node_modules/convex/src/values/value.ts)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(npx playwright *)",
+      "Bash(curl -s http://localhost:4000)",
+      "Bash(node test-features.js)",
+      "Bash(playwright --version)",
+      "Bash(node -e \"require\\('@playwright/test'\\)\")",
+      "Read(//usr/**)",
+      "Bash(npm list *)",
+      "Bash(node -e \"require\\('/root/.npm/_npx/playwright/node_modules/playwright'\\)\")",
+      "Read(//home/codespace/.npm/**)",
+      "Read(//home/codespace/.cache/ms-playwright/**)",
+      "Bash(sudo npx playwright install-deps chromium)",
+      "Bash(curl -s -X DELETE http://localhost:4000/api/posts/test-id -H \"Authorization: Bearer testadmin\")"
     ]
   }
 }
