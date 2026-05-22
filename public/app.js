@@ -9,7 +9,7 @@ const state = {
 // ─── Theme (Feature 13: light/dark mode) ─────────────────────────────────────
 let darkMode = localStorage.getItem('anontea_theme') !== 'light';
 function applyTheme() {
-  document.documentElement.classList.toggle('light', !darkMode);
+  document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
   const btn = document.getElementById('theme-toggle');
   if (btn) btn.textContent = darkMode ? '☀️' : '🌙';
 }
@@ -122,7 +122,7 @@ function spawnConfetti() {
   canvas.width  = window.innerWidth;
   canvas.height = window.innerHeight;
   const ctx  = canvas.getContext('2d');
-  const COLS = ['#ff2d78','#8b5cf6','#10d9a0','#f59e0b','#3b82f6','#ec4899'];
+  const COLS = ['#f0a020','#c85a8a','#22c97a','#f59e0b','#3b82f6','#ec4899'];
   const pts  = Array.from({ length: 90 }, () => ({
     x:     Math.random() * canvas.width,
     y:     -(Math.random() * canvas.height * 0.5),
@@ -163,23 +163,55 @@ function toggleAdminMode() {
     sessionStorage.removeItem('anontea_admin');
     sessionStorage.removeItem('anontea_admin_secret');
     document.getElementById('admin-toggle').classList.remove('active');
+    document.getElementById('_admin-pw-wrap')?.remove();
     toast('Admin mode off');
     loadPosts();
     return;
   }
-  const secret = prompt('Admin password:');
-  if (!secret) return;
-  sessionStorage.setItem('anontea_admin_secret', secret);
-  sessionStorage.setItem('anontea_admin', '1');
-  adminMode = true;
-  document.getElementById('admin-toggle').classList.add('active');
-  toast('Admin mode on — trash buttons visible');
-  loadPosts();
+  // prompt() is blocked in iframes/VS Code Simple Browser — use inline input instead
+  const existing = document.getElementById('_admin-pw-wrap');
+  if (existing) { existing.remove(); return; }
+  const wrap = document.createElement('div');
+  wrap.id = '_admin-pw-wrap';
+  wrap.style.cssText = 'position:fixed;bottom:60px;right:18px;z-index:9999;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:14px;display:flex;gap:8px;box-shadow:0 8px 30px rgba(0,0,0,0.5)';
+  const inp = document.createElement('input');
+  inp.type = 'password';
+  inp.placeholder = 'Admin password';
+  inp.style.cssText = 'background:#0d0d1a;border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;width:150px';
+  const btn = document.createElement('button');
+  btn.textContent = 'Enter';
+  btn.style.cssText = 'background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;padding:8px 14px;border-radius:999px;font-family:var(--font);font-weight:700;font-size:13px;cursor:pointer';
+  const submit = () => {
+    const secret = inp.value.trim();
+    wrap.remove();
+    if (!secret) return;
+    sessionStorage.setItem('anontea_admin_secret', secret);
+    sessionStorage.setItem('anontea_admin', '1');
+    adminMode = true;
+    document.getElementById('admin-toggle').classList.add('active');
+    toast('Admin mode on — trash buttons visible');
+    loadPosts();
+  };
+  btn.addEventListener('click', submit);
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') wrap.remove(); });
+  wrap.append(inp, btn);
+  document.body.appendChild(wrap);
+  inp.focus();
+}
+
+// ─── Two-click confirmation (replaces confirm() which is blocked in iframes) ──
+const _pendingConfirm = {};
+function twoClickConfirm(key, msg) {
+  if (_pendingConfirm[key]) { delete _pendingConfirm[key]; return true; }
+  _pendingConfirm[key] = true;
+  setTimeout(() => delete _pendingConfirm[key], 3000);
+  toast(msg, 'error');
+  return false;
 }
 
 async function deletePost(e, postId) {
   e.stopPropagation();
-  if (!confirm('Delete this post permanently? This cannot be undone.')) return;
+  if (!twoClickConfirm('del-' + postId, '⚠️ Click 🗑️ again to confirm permanent delete')) return;
   const secret = sessionStorage.getItem('anontea_admin_secret') || '';
   try {
     const res = await fetch(`/api/posts/${postId}`, {
@@ -222,7 +254,7 @@ async function pinPost(e, postId) {
 async function flagPost(e, postId) {
   e.stopPropagation();
   if (flaggedPosts.has(postId)) { toast('Already reported', 'error'); return; }
-  if (!confirm('Report this post for inappropriate content?')) return;
+  if (!twoClickConfirm('flag-' + postId, '🚩 Click again to confirm report')) return;
   flaggedPosts.add(postId);
   saveFlagged();
   try {
@@ -352,7 +384,7 @@ function readingTime(content) {
 }
 
 // Feature 8: consistent avatar color per nickname
-const AVATAR_COLORS = ['#ff2d78','#8b5cf6','#10d9a0','#f59e0b','#3b82f6','#ec4899','#06b6d4','#84cc16'];
+const AVATAR_COLORS = ['#f0a020','#c85a8a','#22c97a','#3b82f6','#f59e0b','#ec4899','#06b6d4','#84cc16'];
 function avatarColor(nickname) {
   let hash = 0;
   for (let i = 0; i < nickname.length; i++) hash = (Math.imul(31, hash) + nickname.charCodeAt(i)) | 0;
@@ -428,10 +460,12 @@ const CAT_LABEL = {
 
 // ─── Search highlight (Feature 23) ───────────────────────────────────────────
 function highlight(text, query) {
-  const escaped = esc(text);
-  if (!query || !query.trim()) return escaped;
-  const escapedQ = esc(query.trim()).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return escaped.replace(new RegExp(escapedQ, 'gi'), '<mark>$&</mark>');
+  if (!query || !query.trim()) return esc(text);
+  const safeQ = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Split on raw text first so HTML escaping never splits an entity
+  return text.split(new RegExp(`(${safeQ})`, 'gi'))
+    .map((part, i) => i % 2 === 1 ? `<mark>${esc(part)}</mark>` : esc(part))
+    .join('');
 }
 
 // ─── Tea Level bar (Feature 24) ──────────────────────────────────────────────
@@ -481,6 +515,11 @@ function renderCard(post) {
     </button>`;
   }).join('');
 
+  const ageMs       = Date.now() - new Date(post.createdAt).getTime();
+  const freshClass  = ageMs < 3600000 ? ' fresh-hot' : ageMs < 21600000 ? ' fresh-warm' : '';
+  const freshBadge  = ageMs < 3600000
+    ? `<span class="fresh-badge hot">🔥 hot</span>`
+    : ageMs < 21600000 ? `<span class="fresh-badge warm">✨ new</span>` : '';
   const newBadge    = isNew(post.createdAt) ? `<span class="post-card-new-badge">NEW</span>` : '';
   const pinnedBadge = post.pinned ? `<span class="post-card-pinned-label">📌 Pinned</span>` : '';
   const rt          = readingTime(post.content);
@@ -501,12 +540,12 @@ function renderCard(post) {
     : '';
 
   return `
-    <article class="post-card${post.pinned ? ' pinned' : ''}" onclick="openPost('${esc(post.id)}')">
+    <article class="post-card${post.pinned ? ' pinned' : ''}${freshClass}" onclick="openPost('${esc(post.id)}')">
       ${newBadge}
       ${imageHtml}
       <div class="post-card-top">
-        <span class="cat-badge">${esc(CAT_LABEL[post.category] || post.category)}</span>
-        ${pinnedBadge}
+        <button class="cat-badge" onclick="event.stopPropagation();setCategory('${esc(post.category)}')" title="Filter by category">${esc(CAT_LABEL[post.category] || post.category)}</button>
+        ${pinnedBadge}${freshBadge}
         ${tags}
       </div>
       <div class="post-card-title">${highlight(post.title, q)}</div>
@@ -559,6 +598,14 @@ async function loadPosts() {
 
     state.posts = posts;
     updateURL();
+
+    // Update sidebar stats widget
+    const statPostsEl    = document.getElementById('stat-posts');
+    const statCommentsEl = document.getElementById('stat-comments');
+    const statReactEl    = document.getElementById('stat-reactions');
+    if (statPostsEl) statPostsEl.textContent = posts.length;
+    if (statCommentsEl) statCommentsEl.textContent = posts.reduce((s, p) => s + (p.commentCount || 0), 0);
+    if (statReactEl)    statReactEl.textContent     = posts.reduce((s, p) => s + Object.values(p.reactions).reduce((r, v) => r + v, 0), 0);
 
     if (state.posts.length === 0) {
       grid.innerHTML = '';
@@ -742,7 +789,7 @@ function renderPostDetail(post) {
     const r = hasReacted(post.id, emoji);
     const btnId = `rbl-${post.id}-${emoji.codePointAt(0)}`;
     return `<button class="reaction-btn-large${r ? ' reacted' : ''}" id="${btnId}"
-      onclick="reactDetail('${esc(post.id)}','${emoji}')">
+      onclick="reactDetail('${esc(post.id)}','${emoji}',event)">
       ${emoji} <span class="rcount">${count}</span>
     </button>`;
   }).join('');
@@ -835,19 +882,30 @@ function updateCommentCount(el) {
 }
 
 // ─── React in detail view ─────────────────────────────────────────────────────
-async function reactDetail(postId, emoji) {
+async function reactDetail(postId, emoji, e) {
   const was   = hasReacted(postId, emoji);
   setReacted(postId, emoji, !was);
   const btnId = `rbl-${postId}-${emoji.codePointAt(0)}`;
   const btn   = document.getElementById(btnId);
+  if (e && !was) spawnReactionFloat(e, emoji);
+  // Optimistic UI: toggle class and nudge count immediately
+  if (btn) {
+    btn.classList.toggle('reacted', !was);
+    const rc = btn.querySelector('.rcount');
+    if (rc) rc.textContent = Math.max(0, +rc.textContent + (was ? -1 : 1));
+  }
   try {
     const { reactions } = await api('POST', `/api/posts/${postId}/react`, { emoji, delta: was ? -1 : 1 });
-    if (btn) {
-      btn.querySelector('.rcount').textContent = reactions[emoji];
-      btn.classList.toggle('reacted', !was);
-    }
+    // Correct with server truth
+    if (btn) btn.querySelector('.rcount').textContent = reactions[emoji] ?? 0;
   } catch (err) {
+    // Revert optimistic update
     setReacted(postId, emoji, was);
+    if (btn) {
+      btn.classList.toggle('reacted', was);
+      const rc = btn.querySelector('.rcount');
+      if (rc) rc.textContent = Math.max(0, +rc.textContent + (was ? 1 : -1));
+    }
     toast(err.message, 'error');
   }
 }
@@ -980,11 +1038,17 @@ async function submitComment(e, postId) {
 }
 
 // ─── Char counters ────────────────────────────────────────────────────────────
+function updateCharCount(elId, len, max) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.textContent = `${len} / ${max}`;
+  el.className   = 'char-count' + (len >= max * 0.95 ? ' danger' : len >= max * 0.8 ? ' warn' : '');
+}
 document.getElementById('post-title').addEventListener('input', function() {
-  document.getElementById('title-count').textContent = `${this.value.length} / 150`;
+  updateCharCount('title-count', this.value.length, 150);
 });
 document.getElementById('post-content').addEventListener('input', function() {
-  document.getElementById('content-count').textContent = `${this.value.length} / 5000`;
+  updateCharCount('content-count', this.value.length, 5000);
 });
 
 // ─── Search (debounced) ───────────────────────────────────────────────────────
@@ -1007,9 +1071,35 @@ document.getElementById('close-post').addEventListener('click', closeAllModals);
 document.getElementById('empty-spill').addEventListener('click', () => openModal('new-post-modal'));
 document.getElementById('backdrop').addEventListener('click', closeAllModals);
 
+// ─── Keyboard shortcut help modal ────────────────────────────────────────────
+function showShortcutHelp() {
+  if (document.getElementById('_shortcut-modal')) return;
+  const overlay = document.createElement('div');
+  overlay.id = '_shortcut-modal';
+  overlay.className = 'shortcut-modal-overlay';
+  overlay.innerHTML = `
+    <div class="shortcut-modal">
+      <h2>⌨️ Keyboard Shortcuts</h2>
+      <div class="shortcut-row"><span>New post</span><kbd>N</kbd></div>
+      <div class="shortcut-row"><span>Focus search</span><kbd>/</kbd></div>
+      <div class="shortcut-row"><span>Random post</span><kbd>R</kbd></div>
+      <div class="shortcut-row"><span>Toggle bookmarks</span><kbd>B</kbd></div>
+      <div class="shortcut-row"><span>Close modal</span><kbd>Esc</kbd></div>
+      <div class="shortcut-row"><span>This help</span><kbd>?</kbd></div>
+      <button class="shortcut-close-btn" onclick="document.getElementById('_shortcut-modal').remove()">Got it!</button>
+    </div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
 // ─── Keyboard shortcuts (Features 5 + existing) ───────────────────────────────
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeAllModals(); return; }
+  if (e.key === 'Escape') {
+    const shortcutModal = document.getElementById('_shortcut-modal');
+    if (shortcutModal) { shortcutModal.remove(); return; }
+    closeAllModals();
+    return;
+  }
   const active  = document.activeElement;
   const inInput = active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable;
   if (inInput) return;
@@ -1020,6 +1110,7 @@ document.addEventListener('keydown', e => {
     setCategory(state.filter.category === '__bookmarks__' ? 'all' : '__bookmarks__');
     return;
   }
+  if (e.key === '?') { showShortcutHelp(); return; }
 });
 
 // ─── Hash link (share) ────────────────────────────────────────────────────────

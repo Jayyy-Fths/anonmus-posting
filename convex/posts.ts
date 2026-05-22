@@ -79,6 +79,8 @@ export const list = query({
       const score = (p: ReturnType<typeof normalize>) =>
         Object.values(p.reactions as Record<string, number>).reduce((s, v) => s + v, 0) * 2 + p.commentCount;
       results.sort((a, b) => score(b) - score(a));
+    } else if (args.sort === "views") {
+      results.sort((a, b) => (b.views ?? 0) - (a.views ?? 0));
     } else {
       results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }

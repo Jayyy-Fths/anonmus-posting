@@ -58,7 +58,12 @@
       "Read(//home/codespace/.npm/**)",
       "Read(//home/codespace/.cache/ms-playwright/**)",
       "Bash(sudo npx playwright install-deps chromium)",
-      "Bash(curl -s -X DELETE http://localhost:4000/api/posts/test-id -H \"Authorization: Bearer testadmin\")"
+      "Bash(curl -s -X DELETE http://localhost:4000/api/posts/test-id -H \"Authorization: Bearer testadmin\")",
+      "Bash(curl -s http://localhost:3000/api/posts)",
+      "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); print\\(f'{len\\(data\\)} posts'\\)\")",
+      "Bash(curl -s \"http://localhost:4000/api/posts?sort=views\")",
+      "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); [print\\(p['title'], '→', p.get\\('views',0\\), 'views'\\) for p in data]\")",
+      "Bash(node --check /workspaces/anonmus-posting/public/app.js)"
     ]
   }
 }

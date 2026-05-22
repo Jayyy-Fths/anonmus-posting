@@ -42,8 +42,10 @@
       <div class="sort-toggle">
         <button class="sort-btn active" data-sort="new">✨ New</button>
         <button class="sort-btn" data-sort="hot">🔥 Hot</button>
+        <button class="sort-btn" data-sort="views">👁 Top</button>
       </div>
       <button class="random-btn" onclick="openRandomPost()" title="Open a random post (R)">🎲 Random</button>
+      <button class="random-btn" onclick="showShortcutHelp()" title="Keyboard shortcuts (?)">?</button>
     </div>
     <div class="categories-wrap">
       <div class="categories" id="categories">
@@ -52,43 +54,81 @@
     </div>
   </div>
 
-  <!-- Trending Tags -->
-  <section class="tags-section" id="tags-section" style="display:none">
-    <div class="section-inner">
-      <h2 class="section-title">🏷️ Trending Tags</h2>
-      <div class="tags-cloud" id="tags-cloud"></div>
-    </div>
-  </section>
+  <!-- Two-column page layout -->
+  <div class="page-layout">
 
-  <!-- Hot Right Now -->
-  <section class="hot-section" id="hot-section" style="display:none">
-    <div class="section-inner">
-      <h2 class="section-title">🔥 Hot Right Now</h2>
-      <div class="hot-grid" id="hot-posts"></div>
-    </div>
-  </section>
+    <!-- Main feed column -->
+    <div class="feed-col">
 
-  <!-- Recently Viewed -->
-  <section class="recent-section" id="recent-section" style="display:none">
-    <div class="section-inner">
-      <h2 class="section-title">🕐 Recently Viewed</h2>
-      <div class="recent-list" id="recent-list"></div>
-    </div>
-  </section>
+      <!-- Trending Tags -->
+      <section class="tags-section" id="tags-section" style="display:none">
+        <div class="section-inner">
+          <h2 class="section-title">🏷️ Trending Tags</h2>
+          <div class="tags-cloud" id="tags-cloud"></div>
+        </div>
+      </section>
 
-  <!-- Main Feed -->
-  <main class="feed">
-    <div class="feed-inner">
-      <div class="posts-grid" id="posts-grid">
-        <div class="loading"><div class="spinner"></div> Brewing the tea...</div>
+      <!-- Main Feed -->
+      <main class="feed">
+        <div class="feed-inner">
+          <div class="posts-grid" id="posts-grid">
+            <div class="loading"><div class="spinner"></div> Brewing the tea...</div>
+          </div>
+          <div class="empty-state hidden" id="empty-state">
+            <div class="empty-icon">☕</div>
+            <div class="empty-text">No tea to spill here yet...</div>
+            <button class="empty-cta" id="empty-spill">Be the first to spill!</button>
+          </div>
+        </div>
+      </main>
+
+    </div><!-- /.feed-col -->
+
+    <!-- Sidebar column -->
+    <aside class="sidebar-col" id="sidebar">
+
+      <!-- Tea Stats widget -->
+      <div class="sidebar-widget" id="stats-widget">
+        <h3>☕ Tea Stats</h3>
+        <div class="sidebar-stat-row">
+          <span>Posts brewed</span>
+          <span class="sidebar-stat-val" id="stat-posts">—</span>
+        </div>
+        <div class="sidebar-stat-row">
+          <span>Comments poured</span>
+          <span class="sidebar-stat-val" id="stat-comments">—</span>
+        </div>
+        <div class="sidebar-stat-row">
+          <span>🔥 Hottest reaction</span>
+          <span class="sidebar-stat-val" id="stat-reactions">—</span>
+        </div>
       </div>
-      <div class="empty-state hidden" id="empty-state">
-        <div class="empty-icon">☕</div>
-        <div class="empty-text">No tea to spill here yet...</div>
-        <button class="empty-cta" id="empty-spill">Be the first to spill!</button>
+
+      <!-- Hot Right Now -->
+      <section class="hot-section sidebar-widget" id="hot-section" style="display:none">
+        <h3>🔥 Hot Right Now</h3>
+        <div class="hot-grid" id="hot-posts"></div>
+      </section>
+
+      <!-- Recently Viewed -->
+      <section class="recent-section sidebar-widget" id="recent-section" style="display:none">
+        <h3>🕐 Recently Viewed</h3>
+        <div class="recent-list" id="recent-list"></div>
+      </section>
+
+      <!-- Keyboard shortcuts hint -->
+      <div class="sidebar-widget">
+        <h3>⌨️ Shortcuts</h3>
+        <div class="sidebar-stat-row"><span>New post</span><kbd style="background:var(--bg2);border:1px solid var(--border2);border-radius:4px;padding:2px 7px;font-family:monospace;font-size:11px">N</kbd></div>
+        <div class="sidebar-stat-row"><span>Search</span><kbd style="background:var(--bg2);border:1px solid var(--border2);border-radius:4px;padding:2px 7px;font-family:monospace;font-size:11px">/</kbd></div>
+        <div class="sidebar-stat-row"><span>Random post</span><kbd style="background:var(--bg2);border:1px solid var(--border2);border-radius:4px;padding:2px 7px;font-family:monospace;font-size:11px">R</kbd></div>
+        <div class="sidebar-stat-row"><span>Close modal</span><kbd style="background:var(--bg2);border:1px solid var(--border2);border-radius:4px;padding:2px 7px;font-family:monospace;font-size:11px">Esc</kbd></div>
+        <div class="sidebar-stat-row"><span>All shortcuts</span><kbd style="background:var(--bg2);border:1px solid var(--border2);border-radius:4px;padding:2px 7px;font-family:monospace;font-size:11px">?</kbd></div>
       </div>
-    </div>
-  </main>
+
+    </aside><!-- /.sidebar-col -->
+
+  </div><!-- /.page-layout -->
 
   <!-- NEW POST MODAL -->
   <div class="modal hidden" id="new-post-modal">

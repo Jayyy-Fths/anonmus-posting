@@ -131,6 +131,8 @@ module.exports = {
 
     if (sort === 'hot') {
       posts.sort((a, b) => postScore(b, b.commentCount) - postScore(a, a.commentCount));
+    } else if (sort === 'views') {
+      posts.sort((a, b) => (b.views || 0) - (a.views || 0));
     } else {
       posts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     }
