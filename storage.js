@@ -30,7 +30,7 @@ async function convexQuery(funcPath, args = {}) {
   const res = await fetch(`${CONVEX_URL}/api/query`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path: funcPath, args, format: 'json' }),
+    body: JSON.stringify({ path: funcPath, args: [args], format: 'convex_encoded_json' }),
   });
   const data = await res.json();
   if (data.status !== 'success') throw new Error(data.errorMessage || 'Convex query failed');
@@ -41,7 +41,7 @@ async function convexMutation(funcPath, args = {}) {
   const res = await fetch(`${CONVEX_URL}/api/mutation`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path: funcPath, args, format: 'json' }),
+    body: JSON.stringify({ path: funcPath, args: [args], format: 'convex_encoded_json' }),
   });
   const data = await res.json();
   if (data.status !== 'success') throw new Error(data.errorMessage || 'Convex mutation failed');

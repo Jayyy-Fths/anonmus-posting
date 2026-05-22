@@ -117,7 +117,7 @@
             </div>
             <div class="image-preview-wrap hidden" id="image-preview-wrap">
               <img id="image-preview-img" src="" alt="Preview" />
-              <button type="button" class="image-remove-btn" onclick="removeImage();event.preventDefault()">✕</button>
+              <button type="button" class="image-remove-btn" onclick="removeImage();event.preventDefault();event.stopPropagation()">✕</button>
             </div>
           </label>
         </div>
