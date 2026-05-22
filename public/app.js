@@ -699,7 +699,6 @@ async function loadCategories() {
       btn.dataset.cat = cat.id;
       btn.innerHTML = esc(cat.label) + (cat.count > 0
         ? ` <span class="cat-count-badge">${cat.count}</span>` : '');
-      btn.addEventListener('click', () => setCategory(cat.id));
       container.appendChild(btn);
     });
 
@@ -709,7 +708,6 @@ async function loadCategories() {
       bkBtn.className = 'cat-btn';
       bkBtn.dataset.cat = '__bookmarks__';
       bkBtn.textContent = '🔖 Bookmarks';
-      bkBtn.addEventListener('click', () => setCategory('__bookmarks__'));
       container.appendChild(bkBtn);
     }
 
@@ -1140,6 +1138,12 @@ setInterval(loadPosts, 30000);
   document.querySelectorAll('.sort-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.sort === state.filter.sort)
   );
+
+  // Delegated click handler for all category buttons (including static "All Tea")
+  document.getElementById('categories').addEventListener('click', e => {
+    const btn = e.target.closest('.cat-btn');
+    if (btn) setCategory(btn.dataset.cat);
+  });
 
   await Promise.all([loadCategories(), loadPosts()]);
   renderRecentlyViewed();
