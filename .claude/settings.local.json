@@ -63,7 +63,8 @@
       "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); print\\(f'{len\\(data\\)} posts'\\)\")",
       "Bash(curl -s \"http://localhost:4000/api/posts?sort=views\")",
       "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); [print\\(p['title'], '→', p.get\\('views',0\\), 'views'\\) for p in data]\")",
-      "Bash(node --check /workspaces/anonmus-posting/public/app.js)"
+      "Bash(node --check /workspaces/anonmus-posting/public/app.js)",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\" -X DELETE \"http://localhost:4000/api/posts/test123\" -H \"Authorization: Bearer taylorispretty\")"
     ]
   }
 }
