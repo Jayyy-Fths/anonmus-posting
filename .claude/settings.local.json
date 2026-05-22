@@ -45,7 +45,8 @@
       "Bash(node -e \"fetch\\('http://localhost:4000/api/posts?category=all'\\).then\\(r=>console.log\\('OK',r.status\\)\\).catch\\(e=>console.log\\('Fail',e.message\\)\\)\")",
       "Bash(node -e \"fetch\\('http://localhost:4000/api/posts?category=all'\\).then\\(r=>console.log\\('Server OK',r.status\\)\\).catch\\(e=>console.log\\('Not up yet:',e.message\\)\\)\")",
       "Bash(grep -rn 'format\\\\|json\\\\|$id' /workspaces/anonmus-posting/storage.js)",
-      "Bash(grep -n 'convexToJson\\\\|$id\\\\|Id\\\\|isId' /workspaces/anonmus-posting/node_modules/convex/src/values/value.ts)"
+      "Bash(grep -n 'convexToJson\\\\|$id\\\\|Id\\\\|isId' /workspaces/anonmus-posting/node_modules/convex/src/values/value.ts)",
+      "Bash(git stash *)"
     ]
   }
 }
