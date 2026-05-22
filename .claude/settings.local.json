@@ -71,7 +71,15 @@
       "Bash(curl -s \"http://localhost:4000/api/posts?category=all&sort=new\")",
       "Bash(python3 -c \"import json,sys; posts=json.load\\(sys.stdin\\); print\\(posts[0]['id'], 'pinned=', posts[0]['pinned']\\)\")",
       "Bash(curl -s -X POST http://localhost:4000/api/posts/j97e0c50pyrpnr31zgjvpe6wr18704vd/pin -H 'Authorization: Bearer taylorispretty' -H 'Content-Type: application/json')",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\" -X POST \"http://localhost:4000/api/posts/j97e0c50pyrpnr31zgjvpe6wr18704vd/flag\" -H \"Content-Type: application/json\" -d \"{}\")",
+      "Bash(curl -s \"http://localhost:4000/api/posts/j9744aebvrzct8zs21stv438cx870tmq/flag\" -X POST -H \"Content-Type: application/json\" -d \"{}\")",
+      "Bash(curl -s \"http://localhost:4000/api/posts/j971n381t8mzf0n60nzvnm20an8701cw/flag\" -X POST -H \"Content-Type: application/json\" -d \"{}\")",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\" -X POST \"http://localhost:4000/api/posts/j9744aebvrzct8zs21stv438cx870tmq/flag\" -H \"Content-Type: application/json\" -d \"{}\")",
+      "Bash(curl -s -w \"HTTP %{http_code}\" -X POST \"http://localhost:4000/api/posts/j97e0c50pyrpnr31zgjvpe6wr18704vd/flag\" -H \"Content-Type: application/json\" -d \"{}\")",
+      "Bash(curl -s -w '\\\\nHTTP %{http_code}' -X POST http://localhost:4000/api/posts/j9744aebvrzct8zs21stv438cx870tmq/flag -H 'Content-Type: application/json' -H 'X-Forwarded-For: 99.99.99.99' -d '{}')",
+      "Bash(pkill -f \"node server.js\")",
+      "Bash(curl -s -w \" HTTP %{http_code}\" -X POST \"http://localhost:4000/api/posts/j9744aebvrzct8zs21stv438cx870tmq/flag\" -H \"Content-Type: application/json\" -d \"{}\")"
     ]
   }
 }

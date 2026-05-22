@@ -272,11 +272,14 @@ async function flagPost(e, postId) {
   saveFlagged();
   try {
     await api('POST', `/api/posts/${postId}/flag`, {});
-    toast('Post reported. Thank you!');
+    toast('Post reported. Thank you! 🚩');
   } catch (err) {
     flaggedPosts.delete(postId);
     saveFlagged();
-    toast(err.message, 'error');
+    const msg = err.message.includes('Too many') ? 'Too many reports — try again in a minute'
+               : err.message.includes('Request ID') ? 'Report failed — please try again'
+               : err.message;
+    toast(msg, 'error');
   }
 }
 

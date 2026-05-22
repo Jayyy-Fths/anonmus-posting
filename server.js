@@ -238,12 +238,11 @@ app.post('/api/posts/:id/pin', async (req, res) => {
 });
 
 app.post('/api/posts/:id/flag', async (req, res) => {
-  if (!await checkRate(req.ip, 'flag', 5))
-    return res.status(429).json({ error: 'Too many reports' });
   try {
+    if (!await checkRate(req.ip, 'flag', 5))
+      return res.status(429).json({ error: 'Too many reports — slow down' });
     const result = await storage.flagPost(req.params.id);
-    if (!result) return res.status(404).json({ error: 'Not found' });
-    // Fire-and-forget email — don't let a mail failure block the response
+    if (!result) return res.status(404).json({ error: 'Post not found' });
     sendEmailAlert(result.title || 'Unknown post', req.params.id);
     res.json(result);
   } catch (e) {
